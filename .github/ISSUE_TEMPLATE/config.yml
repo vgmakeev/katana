@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/vgmakeev/kanata/security/advisories/new
+    about: Report source disclosure, unsafe rewrite, path traversal, or command execution privately.
+  - name: Agent and adapter documentation
+    url: https://github.com/vgmakeev/kanata/tree/main/docs
+    about: Read the versioned agent, adapter, and toolchain contracts.

@@ -1,0 +1,60 @@
+name: Bug report
+description: Report incorrect analysis, unsafe rewrite, or a CLI failure.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Katana safer. For security-sensitive findings,
+        use the private vulnerability reporting link instead of this form.
+  - type: input
+    id: version
+    attributes:
+      label: Katana version
+      description: Commit SHA, release tag, or output from the installation command.
+      placeholder: f4d4f0a
+    validations:
+      required: true
+  - type: dropdown
+    id: stack
+    attributes:
+      label: Stack
+      options:
+        - Python
+        - TypeScript / JavaScript
+        - Dart
+        - CSS
+        - Markdown / MDX
+        - External adapter
+        - Core / CLI
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and output
+      description: Include the exact command and sanitized JSON or diagnostics.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Minimal reproducer
+      description: Remove private source and credentials. A small synthetic file is ideal.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed private source, credentials, and identifying data.
+          required: true

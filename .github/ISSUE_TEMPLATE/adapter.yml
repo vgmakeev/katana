@@ -1,0 +1,41 @@
+name: Adapter request
+description: Propose architecture-map or toolchain support for a language or stack.
+title: "adapter: "
+labels: ["adapter"]
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Language or stack
+      placeholder: Go
+    validations:
+      required: true
+  - type: textarea
+    id: parser
+    attributes:
+      label: Parser and semantic tooling
+      description: Native compiler API, Tree-sitter grammar, LSP, formatter, linter, and checker.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Initial scope
+      options:
+        - Architecture map and LOC only
+        - Toolchain integration only
+        - Rewrite support
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Agent use case
+      description: Describe the large-file pattern and what the agent should learn from the map.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation strategy
+      description: Required for rewrite proposals—explain imports, dependency closure, formatting, and checks.
