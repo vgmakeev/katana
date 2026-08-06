@@ -1,8 +1,10 @@
 [project]
-name = "mini-katana"
+name = "katana"
 version = "0.4.67"
 description = "Deterministic polyglot refactoring executor for coding agents"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = []
 keywords = ["ai-agents", "ast", "refactoring", "developer-tools", "code-intelligence"]
@@ -23,7 +25,7 @@ Repository = "https://github.com/vgmakeev/kanata"
 Issues = "https://github.com/vgmakeev/kanata/issues"
 
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

@@ -25,9 +25,8 @@ uv tool install git+https://github.com/vgmakeev/kanata.git
 katana --help
 ```
 
-The repository is named `kanata`; the established Python import and CLI remain
-`katana`. The PyPI distribution remains `mini-katana` for compatibility until a
-standalone distribution name is selected.
+The repository is named `kanata`; the Python distribution, import, and CLI are
+all named `katana`.
 
 ## Quick start
 
@@ -203,3 +202,10 @@ implicit promise of the current adapters.
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Release checklist](docs/RELEASING.md)
+
+## License
+
+Katana is available under the [Apache License 2.0](LICENSE). You may use,
+modify, and distribute it in commercial and proprietary products, subject to
+the license's attribution and redistribution terms. Apache-2.0 also includes an
+explicit patent grant from contributors.
