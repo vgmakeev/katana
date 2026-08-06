@@ -11,3 +11,14 @@
 
 The PyPI distribution is `katana-agent`; the import package, CLI, and entry
 point groups remain `katana`.
+
+The PyPI trusted publisher is intentionally secretless:
+
+- owner: `vgmakeev`;
+- repository: `kanata`;
+- workflow: `publish.yml`;
+- environment: `pypi`.
+
+For the first upload, register those values as a pending publisher in PyPI.
+Later GitHub releases trigger publishing automatically. A previously created
+tag can be published from the workflow's manual `tag` input.
