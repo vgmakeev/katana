@@ -20,5 +20,7 @@ The PyPI trusted publisher is intentionally secretless:
 - environment: `pypi`.
 
 For the first upload, register those values as a pending publisher in PyPI.
-Later GitHub releases trigger publishing automatically. A previously created
-tag can be published from the workflow's manual `tag` input.
+Then set the repository variable `PYPI_PUBLISH_ENABLED=true`. Later GitHub
+releases trigger publishing automatically. Until that variable is enabled,
+release events safely skip the upload. A previously created tag can be
+published from the workflow's manual `tag` input.

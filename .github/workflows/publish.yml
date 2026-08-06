@@ -20,6 +20,7 @@ concurrency:
 jobs:
   pypi:
     name: PyPI
+    if: github.event_name == 'workflow_dispatch' || vars.PYPI_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
