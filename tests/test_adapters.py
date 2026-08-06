@@ -149,7 +149,10 @@ def test_map_cli_returns_signatures_spans_and_loc_without_source_body(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     source = tmp_path / "module.py"
-    source.write_text('def greeting(name: str) -> str:\n    return "секрет:" + name\n')
+    source.write_text(
+        'def greeting(name: str) -> str:\n    return "секрет:" + name\n',
+        encoding="utf-8",
+    )
 
     main(["map", str(source), "--json"])
     output = capsys.readouterr().out

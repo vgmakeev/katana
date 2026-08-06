@@ -41,6 +41,7 @@ from katana.adapters import (
     language_adapter_for,
     language_adapters,
 )
+from katana.source_io import read_source_text
 from katana.toolchain import (
     skipped_toolchain_payload,
     toolchain_adapters,
@@ -331,7 +332,7 @@ def handle_katana_command(
         source = Path(args.source)
         document = analyze_source_file(source)
         payload = document.to_payload()
-        payload["physical_lines"] = len(source.read_text().splitlines())
+        payload["physical_lines"] = len(read_source_text(source).splitlines())
         payload["code_lines"] = source_code_line_count(source)
         payload["safe_moves"] = source_safe_move_groups(source, list(document.source_symbols))
     elif command == "outline":

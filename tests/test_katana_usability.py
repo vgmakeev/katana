@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -256,8 +258,24 @@ def _write_fake_tool(
     *,
     json_when: str | None = None,
 ) -> None:
-    json_case = (
-        f'case "$*" in *"{json_when}"*) printf \'[]\';; esac\n' if json_when is not None else ""
+    script = path.with_name(f"_{path.name}_fake.py")
+    script.write_text(
+        "import json\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "args = ' '.join(sys.argv[1:])\n"
+        f"with Path({str(log)!r}).open('a', encoding='utf-8') as stream:\n"
+        f"    stream.write({path.name!r} + ' ' + args + '\\n')\n"
+        f"if {json_when!r} is not None and {json_when!r} in args:\n"
+        "    print(json.dumps([]))\n",
+        encoding="utf-8",
     )
-    path.write_text(f'#!/bin/sh\necho "{path.name} $@" >> "{log}"\n{json_case}exit 0\n')
-    path.chmod(0o755)
+    if os.name == "nt":
+        wrapper = path.with_suffix(".cmd")
+        wrapper.write_text(f'@"{sys.executable}" "{script}" %*\n', encoding="utf-8")
+    else:
+        path.write_text(
+            f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n',
+            encoding="utf-8",
+        )
+        path.chmod(0o755)
