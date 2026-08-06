@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups --python 3.14
+      - run: uv run --python 3.14 pytest tests
+      - if: matrix.os == 'ubuntu-latest'
+        run: uv run ruff check katana tests examples
+      - if: matrix.os == 'ubuntu-latest'
+        run: uv run ruff format --check katana tests examples
+      - if: matrix.os == 'ubuntu-latest'
+        run: uv run mypy katana
+
+  node-bridges:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --check katana/ast_bridge.mjs
+      - run: npm run test:markdown-bridge
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
+      - run: uv build
+      - run: uvx twine check dist/*

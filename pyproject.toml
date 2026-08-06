@@ -1,0 +1,66 @@
+[project]
+name = "mini-katana"
+version = "0.4.67"
+description = "Deterministic polyglot refactoring executor for coding agents"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+keywords = ["ai-agents", "ast", "refactoring", "developer-tools", "code-intelligence"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+
+[project.scripts]
+katana = "katana.cli:main"
+
+[project.urls]
+Repository = "https://github.com/vgmakeev/kanata"
+Issues = "https://github.com/vgmakeev/kanata/issues"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["katana*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+katana = [
+    "ast_bridge.mjs",
+    "dart_ast.dart",
+    "py.typed",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "pytest>=9.0.3",
+    "ruff>=0.15.13",
+]
+
+[tool.mypy]
+python_version = "3.14"
+plugins = []
+strict = true
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+extend-select = ["I", "N", "UP", "B", "C4", "SIM", "T20", "TID", "ASYNC", "RUF"]
+ignore = ["RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"katana/cli.py" = ["T20"]

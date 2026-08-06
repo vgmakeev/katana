@@ -1,0 +1,11 @@
+{
+  "name": "katana-local-ast-bridges",
+  "private": true,
+  "description": "Optional Node AST backends for the Katana Python CLI",
+  "scripts": {
+    "test:markdown-bridge": "node katana/ast_bridge.mjs markdown tests/fixtures/markdown.md"
+  },
+  "optionalDependencies": {
+    "@tanstack/markdown": "0.0.13"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "protocol_version": 1,
+  "adapters": [
+    {
+      "id": "example_demo_adapter",
+      "language": "demo",
+      "extensions": [".demo"],
+      "profiles": ["demo", "all"],
+      "command": ["@python", "../adapter.py"]
+    }
+  ]
+}
