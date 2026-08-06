@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import ast
-import os
 import py_compile
 import re
 from pathlib import Path
-from typing import Any
 
 from .apply_compat import (
     _apply_text_compat_exports,
     _apply_text_usage_imports,
     _text_leading_block,
     _ts_exported_block,
-    _typescript_leading_block,
 )
+from .apply_io import _load_split_plan_payload, _write_split_outputs
+from .apply_validation import _check_code_line_count, _plan_cycle_warnings
 from .impact import dynamic_reference_warnings
 from .imports import (
     _dependency_import_lines,
@@ -31,7 +30,6 @@ from .merge import (
 from .models import (
     KATANA_PLAN_SUFFIX,
     LEGACY_SOURCE_SPLIT_PLAN_SUFFIX,
-    SPLIT_PLAN_VERSION,
     SourceSplitCheck,
     SourceSplitMove,
     SourceSplitPlan,
@@ -43,7 +41,8 @@ from .outline import (
     outline_python_module,
     outline_source_file,
 )
-from .source_io import encode_source_text, read_source_text, source_newline
+from .source_io import read_source_text
+from .text_cleanup import _prune_text_imports
 from .toolchain import run_toolchain_after_split
 
 
@@ -108,42 +107,6 @@ def _default_plan_file(source: Path) -> Path | None:
     if legacy.exists():
         return legacy
     return None
-
-
-def _load_split_plan_payload(plan_file: Path) -> dict[str, Any]:
-    import json
-
-    payload = json.loads(plan_file.read_text())
-    if not isinstance(payload, dict):
-        raise TypeError("Split plan must be a JSON object")
-
-    allowed_top_level = {"version", "source", "moves", "moved_symbols", "warnings"}
-    for key in payload:
-        if key not in allowed_top_level:
-            raise ValueError(f"Unknown split plan key: {key}")
-
-    version = int(payload.get("version", SPLIT_PLAN_VERSION))
-    if version != SPLIT_PLAN_VERSION:
-        raise ValueError(f"Unsupported split plan version {version}; expected {SPLIT_PLAN_VERSION}")
-
-    if "moves" not in payload:
-        raise ValueError("Split plan must include moves")
-    raw_moves = payload["moves"]
-    if not isinstance(raw_moves, list):
-        raise TypeError("Split plan moves must be an array")
-
-    allowed_move_keys = {"target", "symbols"}
-    for index, raw in enumerate(raw_moves):
-        if not isinstance(raw, dict):
-            raise TypeError(f"Split plan moves[{index}] must be an object")
-        for key in raw:
-            if key not in allowed_move_keys:
-                raise ValueError(f"Unknown split plan moves[{index}] key: {key}")
-        for key in ("target", "symbols"):
-            if key not in raw:
-                raise ValueError(f"Split plan moves[{index}] must include {key}")
-
-    return payload
 
 
 def plan_python_split(source: Path, moves: tuple[SourceSplitMove, ...]) -> SourceSplitPlan:
@@ -378,59 +341,6 @@ def _validate_unique_targets(moves: tuple[SourceSplitMove, ...]) -> None:
         seen.add(target)
 
 
-def _write_split_outputs(
-    source: Path,
-    moves: tuple[SourceSplitMove, ...],
-    outputs: dict[Path, str],
-) -> None:
-    init_outputs = _package_init_outputs(source, moves)
-    write_outputs = {**init_outputs, **outputs}
-    target_paths = [path for path in (move.target for move in moves) if path in outputs]
-    paths = list(dict.fromkeys([*init_outputs, *target_paths, source]))
-    for path in paths:
-        parent = path.parent
-        if parent.exists() and not parent.is_dir():
-            raise ValueError(f"Split target parent is not a directory: {parent}")
-        if path.exists() and not path.is_file():
-            raise ValueError(f"Split output is not a file: {path}")
-        _validate_writable_output(path)
-    for path in paths:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        newline_owner = path if path.exists() and path.stat().st_size else source
-        path.write_bytes(
-            encode_source_text(write_outputs[path], newline=source_newline(newline_owner))
-        )
-
-
-def _package_init_outputs(
-    source: Path,
-    moves: tuple[SourceSplitMove, ...],
-) -> dict[Path, str]:
-    outputs: dict[Path, str] = {}
-    for move in moves:
-        if move.target.suffix != ".py":
-            continue
-        parent = move.target.parent
-        while source.parent in parent.parents:
-            init = parent / "__init__.py"
-            if not init.exists():
-                outputs[init] = ""
-            parent = parent.parent
-    return outputs
-
-
-def _validate_writable_output(path: Path) -> None:
-    if path.exists():
-        if not os.access(path, os.W_OK):
-            raise ValueError(f"Split output is not writable: {path}")
-        return
-    parent = path.parent
-    while not parent.exists():
-        parent = parent.parent
-    if not os.access(parent, os.W_OK):
-        raise ValueError(f"Split output parent is not writable: {parent}")
-
-
 def apply_text_split(
     source: Path,
     moves: tuple[SourceSplitMove, ...],
@@ -445,7 +355,7 @@ def apply_text_split(
     symbols = outline_source_file(source)
     spans = {symbol.name: (symbol.start_line, symbol.end_line) for symbol in symbols}
     leading_block = _text_leading_block(source, lines)
-    typescript = source.suffix in (".ts", ".tsx", ".js", ".jsx")
+    typescript = source.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
     symbols_by_name = {symbol.name: symbol for symbol in symbols}
     moved_to = {symbol: move.target for move in moves for symbol in move.symbols}
     moved_all = set(moved_to)
@@ -547,50 +457,6 @@ def check_split_result(
     return SourceSplitCheck(files=files, max_lines=max_lines, oversized=tuple(oversized))
 
 
-def _check_code_line_count(path: Path, text: str) -> int:
-    if path.suffix == ".py":
-        return sum(
-            1 for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")
-        )
-    if path.suffix in (".md", ".mdx"):
-        return sum(1 for line in text.splitlines() if line.strip())
-    if path.suffix == ".css":
-        return sum(
-            1
-            for line in text.splitlines()
-            if line.strip() and not line.lstrip().startswith(("/*", "*"))
-        )
-    return sum(
-        1
-        for line in text.splitlines()
-        if line.strip() and not line.lstrip().startswith(("//", "/*", "*"))
-    )
-
-
-def _plan_cycle_warnings(source: Path, moves: tuple[SourceSplitMove, ...]) -> list[str]:
-    if not moves:
-        return []
-    symbols = {symbol.name: symbol for symbol in outline_python_module(source)}
-    symbol_file = {symbol.name: source for symbol in symbols.values()}
-    for move in moves:
-        for moved_symbol in move.symbols:
-            symbol_file[moved_symbol] = move.target
-
-    edges: set[tuple[Path, Path]] = set()
-    for symbol in symbols.values():
-        from_file = symbol_file[symbol.name]
-        for reference in symbol.references:
-            to_file = symbol_file.get(reference)
-            if to_file is not None and to_file != from_file:
-                edges.add((from_file, to_file))
-
-    warnings: list[str] = []
-    for left, right in sorted(edges):
-        if (right, left) in edges and str(left) < str(right):
-            warnings.append(f"potential import cycle between {left} and {right}")
-    return warnings
-
-
 def _placeholder_target_warnings(moves: tuple[SourceSplitMove, ...]) -> list[str]:
     placeholders = [
         match.group(1) for move in moves if (match := re.search(r"(_part\d+)$", move.target.stem))
@@ -633,89 +499,6 @@ def _symbol_spans(tree: ast.Module) -> dict[str, tuple[int, int]]:
         if name is not None and node.end_lineno is not None:
             spans[name] = (_decorated_start_line(node), node.end_lineno)
     return spans
-
-
-_TS_IMPORT_STMT_RE = re.compile(
-    r"import\s+(?P<type>type\s+)?"
-    r"(?:(?P<default>[A-Za-z_$][\w$]*)\s*,?\s*)?"
-    r"(?:\{(?P<named>[^}]*)\})?\s*"
-    r"(?:\*\s+as\s+(?P<namespace>[A-Za-z_$][\w$]*))?\s*"
-    r"from\s*(?P<module>[\"'][^\"']+[\"'])",
-    re.DOTALL,
-)
-
-
-def _prune_text_imports(text: str, suffix: str) -> str:
-    """Drop leading-block import bindings the file no longer uses.
-
-    The text twin of the Python symtable pruner: usage is a word-boundary
-    match in the code after the import block, which covers JSX and type
-    positions alike.
-    """
-    if suffix not in (".ts", ".tsx", ".js", ".jsx"):
-        return text
-    lines = text.splitlines(keepends=True)
-    block = _typescript_leading_block(lines)
-    rest = "".join(lines[len(block) :])
-
-    statements: list[list[str]] = []
-    current: list[str] = []
-    open_braces = 0
-    for line in block:
-        if current:
-            current.append(line)
-            open_braces += line.count("{") - line.count("}")
-            if open_braces <= 0:
-                statements.append(current)
-                current = []
-            continue
-        stripped = line.strip()
-        if stripped.startswith(("import ", "import type")):
-            open_braces = line.count("{") - line.count("}")
-            if open_braces > 0:
-                current = [line]
-            else:
-                statements.append([line])
-            continue
-        statements.append([line])
-    if current:
-        statements.append(current)
-
-    def used(name: str) -> bool:
-        return re.search(rf"\b{re.escape(name)}\b", rest) is not None
-
-    out: list[str] = []
-    for statement in statements:
-        joined = "".join(statement)
-        stripped = joined.strip()
-        if not stripped.startswith("import"):
-            out.append(joined)
-            continue
-        match = _TS_IMPORT_STMT_RE.search(joined)
-        if match is None:
-            # Side-effect import or a shape we do not model: keep verbatim.
-            out.append(joined)
-            continue
-        type_kw = "type " if match.group("type") else ""
-        default = match.group("default")
-        namespace = match.group("namespace")
-        named = [item.strip() for item in (match.group("named") or "").split(",") if item.strip()]
-        kept_named = [
-            item for item in named if used(item.split(" as ")[-1].removeprefix("type ").strip())
-        ]
-        kept_default = default if default and used(default) else None
-        kept_namespace = namespace if namespace and used(namespace) else None
-        if not kept_named and not kept_default and not kept_namespace:
-            continue
-        pieces: list[str] = []
-        if kept_default:
-            pieces.append(kept_default)
-        if kept_named:
-            pieces.append("{ " + ", ".join(kept_named) + " }")
-        if kept_namespace:
-            pieces.append(f"* as {kept_namespace}")
-        out.append(f"import {type_kw}{', '.join(pieces)} from {match.group('module')}\n")
-    return "".join(out) + rest
 
 
 def _slice_with_trailing_blank(lines: list[str], span: tuple[int, int]) -> list[str]:

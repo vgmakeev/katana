@@ -86,6 +86,8 @@ def test_builtin_profile_extension_order_remains_v1_compatible() -> None:
         ".tsx",
         ".js",
         ".jsx",
+        ".mjs",
+        ".cjs",
         ".css",
     )
     assert source_split_extensions_for_profiles(("all",)) == (
@@ -94,11 +96,27 @@ def test_builtin_profile_extension_order_remains_v1_compatible() -> None:
         ".tsx",
         ".js",
         ".jsx",
+        ".mjs",
+        ".cjs",
         ".dart",
         ".css",
         ".md",
         ".mdx",
     )
+
+
+@pytest.mark.parametrize("suffix", (".mjs", ".cjs"))
+def test_javascript_module_extensions_use_the_javascript_adapter(
+    suffix: str, tmp_path: Path
+) -> None:
+    source = tmp_path / f"module{suffix}"
+    source.write_text("export function value() { return 1 }\n")
+
+    document = analyze_source_file(source)
+
+    assert document.language == "javascript"
+    assert document.adapter_id == "node_typescript"
+    assert [symbol.name for symbol in document.symbols] == ["value"]
 
 
 def test_v1_parser_payloads_remain_compatible(tmp_path: Path) -> None:

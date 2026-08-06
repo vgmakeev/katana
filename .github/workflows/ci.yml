@@ -25,6 +25,8 @@ jobs:
       - run: uv sync --all-groups --python 3.14
       - run: uv run --python 3.14 pytest tests
       - if: matrix.os == 'ubuntu-latest'
+        run: make size-check
+      - if: matrix.os == 'ubuntu-latest'
         run: uv run ruff check katana tests examples
       - if: matrix.os == 'ubuntu-latest'
         run: uv run ruff format --check katana tests examples
@@ -41,6 +43,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node --check katana/ast_bridge.mjs
+      - run: node --check katana/ast_bridge_modules.mjs
       - run: npm run test:markdown-bridge
 
   package:

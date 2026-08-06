@@ -3,18 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import shutil
-import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import cast
 
 from katana import (
     KATANA_PLAN_SUFFIX,
     LEGACY_SOURCE_SPLIT_PLAN_SUFFIX,
-    SOURCE_SPLIT_EXTENSIONS,
-    SOURCE_SPLIT_PROFILES,
-    SourceSplitMove,
     analyze_source_file,
     apply_source_split,
     assess_source_split,
@@ -48,6 +42,14 @@ from katana.toolchain import (
     toolchain_load_errors,
 )
 
+from .cli_output import (
+    _check_apply_source_split,
+    _print_source_split_payload,
+    _result_outline,
+    _review_command,
+)
+from .cli_parser import _add_katana_commands
+
 _FLOW_EPILOG = """canonical flow:
 large -> find oversized files by language-aware LOC
 map -> give the agent signatures, dependencies and constraints without source bodies
@@ -80,219 +82,6 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="katana_command", required=True)
     _add_katana_commands(commands)
     return parser
-
-
-def _add_katana_commands(
-    commands: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
-    schema = commands.add_parser(
-        "schema",
-        help="Print the split plan JSON Schema.",
-        description="Print the split plan JSON Schema.",
-    )
-    schema.add_argument("--json", action="store_true")
-
-    adapters = commands.add_parser(
-        "adapters",
-        help="List installed language adapters and their capabilities.",
-        description="List installed Katana language adapters.",
-    )
-    adapters.add_argument(
-        "source",
-        nargs="?",
-        help="Optional source file used to resolve dynamic parser capabilities.",
-    )
-    adapters.add_argument(
-        "--schema",
-        action="store_true",
-        help="Print the project command-adapter manifest JSON Schema.",
-    )
-    adapters.add_argument(
-        "--check",
-        action="store_true",
-        help="Validate the selected adapter's DocumentIR against the source.",
-    )
-    adapters.add_argument("--json", action="store_true")
-
-    source_map = commands.add_parser(
-        "map",
-        help="Build a compact, source-free architecture map for one file.",
-        description=(
-            "Emit signatures, LOC, dependencies, exact spans and move constraints "
-            "without returning source bodies."
-        ),
-    )
-    source_map.add_argument("source")
-    source_map.add_argument("--json", action="store_true")
-
-    outline = commands.add_parser(
-        "outline",
-        help="List top-level symbols in one source file.",
-        description="List top-level symbols in one source file.",
-    )
-    outline.add_argument("source")
-    outline.add_argument("--json", action="store_true")
-
-    assess = commands.add_parser(
-        "assess",
-        help="Assess one file and suggest a safe split plan.",
-        description="Assess one file and suggest a safe split plan.",
-    )
-    assess.add_argument("source")
-    assess.add_argument("--max-lines", type=int, default=750)
-    assess.add_argument("--headroom", type=int, help="Planning margin below --max-lines.")
-    assess.add_argument("--target-prefix")
-    assess.add_argument(
-        "--write-plan",
-        action="store_true",
-        help="Write the suggested plan to <source>.katana.json for apply --plan-file.",
-    )
-    assess.add_argument("--json", action="store_true")
-
-    large = commands.add_parser(
-        "large",
-        help="Find files over the configured line budget.",
-        description="Find files over the configured line budget.",
-    )
-    large.add_argument("roots", nargs="+")
-    large.add_argument("--max-lines", type=int, default=750)
-    large.add_argument(
-        "--exclude-dir",
-        action="append",
-        default=[],
-        help="Directory name to exclude. May be repeated.",
-    )
-    large.add_argument(
-        "--ext",
-        action="append",
-        default=[],
-        help=(
-            "Extra file extension to include, e.g. .tsx. "
-            f"Supported extensions: {', '.join(SOURCE_SPLIT_EXTENSIONS)}."
-        ),
-    )
-    large.add_argument(
-        "--profile",
-        action="append",
-        default=[],
-        help=(
-            "Source family to include. Defaults to auto, which always includes core "
-            "Python/Markdown and detects admin/next/flutter markers. May be repeated. "
-            f"Known profiles: auto, {', '.join(sorted(SOURCE_SPLIT_PROFILES))}."
-        ),
-    )
-    large.add_argument(
-        "--assess",
-        action="store_true",
-        help="Include full agent assessment for each oversized file.",
-    )
-    large.add_argument(
-        "--detail",
-        action="store_true",
-        help="Include full outlines per file. Default output is a compact list.",
-    )
-    large.add_argument("--json", action="store_true")
-
-    project = commands.add_parser(
-        "project",
-        help="Assess oversized files across a project.",
-        description="Assess oversized files across a project.",
-    )
-    project.add_argument("roots", nargs="+")
-    project.add_argument("--max-lines", type=int, default=750)
-    project.add_argument("--headroom", type=int, help="Planning margin below --max-lines.")
-    project.add_argument(
-        "--profile",
-        action="append",
-        default=[],
-        help=(
-            "Source family to include. Defaults to auto. May be repeated. "
-            f"Known profiles: auto, {', '.join(sorted(SOURCE_SPLIT_PROFILES))}."
-        ),
-    )
-    project.add_argument(
-        "--ext",
-        action="append",
-        default=[],
-        help=f"Extra extension to include. Supported: {', '.join(SOURCE_SPLIT_EXTENSIONS)}.",
-    )
-    project.add_argument(
-        "--exclude-dir",
-        action="append",
-        default=[],
-        help="Directory name to exclude. May be repeated.",
-    )
-    project.add_argument("--limit", type=int)
-    project.add_argument(
-        "--write-plans",
-        action="store_true",
-        help="Write .katana.json files for suggested plans.",
-    )
-    project.add_argument(
-        "--detail",
-        action="store_true",
-        help=(
-            "Include full symbols and safe-move menus. Default JSON is compact "
-            "so project-wide scans stay readable."
-        ),
-    )
-    project.add_argument("--json", action="store_true")
-
-    plan = commands.add_parser(
-        "plan",
-        help="Validate and echo an explicit move plan.",
-        description="Validate and echo an explicit move plan.",
-    )
-    plan.add_argument("source")
-    plan.add_argument(
-        "--move",
-        action="append",
-        default=[],
-        metavar="TARGET.ext:SYMBOL[,SYMBOL...]",
-        help="Move top-level symbols into a target file relative to the source file.",
-    )
-    plan.add_argument("--plan-file", help="JSON move plan with moves[].target and moves[].symbols.")
-    plan.add_argument("--json", action="store_true")
-
-    apply = commands.add_parser(
-        "apply", help="Apply an explicit split plan.", description="Apply an explicit split plan."
-    )
-    apply.add_argument("source")
-    apply.add_argument(
-        "--move",
-        action="append",
-        default=[],
-        metavar="TARGET.ext:SYMBOL[,SYMBOL...]",
-        help="Move top-level symbols into a target file relative to the source file.",
-    )
-    apply.add_argument(
-        "--plan-file", help="JSON move plan with moves[].target and moves[].symbols."
-    )
-    apply.add_argument("--force", action="store_true")
-    apply.add_argument("--check", action="store_true")
-    apply.add_argument("--max-lines", type=int, default=None)
-    apply.add_argument(
-        "--no-compat-imports",
-        action="store_true",
-        help="Do not leave from .target import symbol compatibility imports in the source file.",
-    )
-    apply.add_argument(
-        "--no-lint-fix",
-        action="store_true",
-        help="Skip detected project formatter/linter adapters over the split files.",
-    )
-    apply.add_argument(
-        "--plain-imports",
-        action="store_true",
-        help=(
-            "Generate plain sibling imports instead of package-relative imports. "
-            "Use for standalone Python files in directories without __init__.py."
-        ),
-    )
-    apply.add_argument(
-        "--typecheck", action="store_true", help="Run optional check-only tsc/mypy after apply."
-    )
-    apply.add_argument("--json", action="store_true")
 
 
 def handle_source_split_command(args: argparse.Namespace) -> bool:
@@ -536,113 +325,10 @@ def _adapter_payload(source: Path | None) -> dict[str, object]:
     }
 
 
-def _check_apply_source_split(
-    source: Path,
-    moves: tuple[SourceSplitMove, ...],
-    *,
-    keep_compat_imports: bool,
-    force: bool,
-    package_relative: bool,
-    max_lines: int | None,
-) -> dict[str, object]:
-    with tempfile.TemporaryDirectory(prefix="katana-apply-check-") as tmp:
-        sandbox_dir = Path(tmp) / "source"
-        sandbox_dir.mkdir(parents=True)
-        sandbox_source = sandbox_dir / source.name
-        shutil.copy2(source, sandbox_source)
-
-        path_map: dict[Path, Path] = {sandbox_source: source}
-        sandbox_moves: list[SourceSplitMove] = []
-        for move in moves:
-            try:
-                target_relative = move.target.relative_to(source.parent)
-            except ValueError as error:
-                raise ValueError(
-                    "Split targets must be inside the source module directory"
-                ) from error
-            sandbox_target = sandbox_dir / target_relative
-            sandbox_target.parent.mkdir(parents=True, exist_ok=True)
-            if move.target.exists():
-                shutil.copy2(move.target, sandbox_target)
-            path_map[sandbox_target] = move.target
-            sandbox_moves.append(SourceSplitMove(sandbox_target, move.symbols))
-
-        sandbox_move_tuple = tuple(sandbox_moves)
-        plan = apply_source_split(
-            sandbox_source,
-            sandbox_move_tuple,
-            keep_compat_imports=keep_compat_imports,
-            force=force,
-            package_relative=package_relative,
-        )
-        payload = cast(dict[str, object], _remap_split_payload_paths(plan.to_payload(), path_map))
-        payload["dry_run"] = True
-        payload["result_outline"] = _remap_split_payload_paths(
-            _result_outline(sandbox_source, sandbox_move_tuple),
-            path_map,
-        )
-        payload["import_impact"] = _remap_split_payload_paths(
-            import_impact_report(sandbox_source, sandbox_move_tuple),
-            path_map,
-        )
-        payload["review_command"] = _review_command(source, moves)
-        payload["lint"] = skipped_toolchain_payload("skipped during --check dry-run")
-        payload["review_notes"] = [
-            "Dry-run only: no source or target files were written.",
-            "Review moved lines with the review_command before semantic edits.",
-            "Commit the split as its own clean commit so git blame -C -C keeps attribution across files.",
-        ]
-        check = check_split_result(sandbox_source, sandbox_move_tuple, max_lines=max_lines)
-        payload["check"] = _remap_split_payload_paths(check.to_payload(), path_map)
-        return payload
-
-
-def _remap_split_payload_paths(value: object, path_map: dict[Path, Path]) -> object:
-    if isinstance(value, dict):
-        return {key: _remap_split_payload_paths(item, path_map) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_remap_split_payload_paths(item, path_map) for item in value]
-    if isinstance(value, str):
-        result = value
-        for sandbox_path, real_path in sorted(
-            path_map.items(),
-            key=lambda item: len(str(item[0])),
-            reverse=True,
-        ):
-            result = result.replace(str(sandbox_path), str(real_path))
-        return result
-    return value
-
-
 def main(argv: Sequence[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
     handle_katana_command(args)
-
-
-def _result_outline(source: Path, moves: tuple[SourceSplitMove, ...]) -> list[dict[str, object]]:
-    # Structural control for the agent: signatures and sizes of every touched
-    # file after the split, without reading the code.
-    outline: list[dict[str, object]] = []
-    for path in (source, *(move.target for move in moves)):
-        entry: dict[str, object] = {
-            "path": str(path),
-            "code_lines": source_code_line_count(path),
-        }
-        try:
-            entry["symbols"] = [
-                {
-                    "name": symbol.name,
-                    "kind": symbol.kind,
-                    "signature": symbol.signature,
-                    "code_lines": symbol.code_lines,
-                }
-                for symbol in outline_source_file(path)
-            ]
-        except (SyntaxError, ValueError) as error:
-            entry["error"] = str(error)
-        outline.append(entry)
-    return outline
 
 
 def _resolved_cleanup_plan_file(
@@ -691,11 +377,6 @@ def _cleanup_split_plan_file(payload: dict[str, object], plan_file: Path) -> Non
         payload["plan_file_cleanup_error"] = f"{type(error).__name__}: {error}"
     else:
         payload["plan_file_removed"] = str(plan_file)
-
-
-def _review_command(source: Path, moves: tuple[SourceSplitMove, ...]) -> str:
-    paths = " ".join(str(path) for path in (source, *(move.target for move in moves)))
-    return f"git diff --color-moved=dimmed-zebra -- {paths}"
 
 
 def _compact_project_payload(payload: dict[str, object]) -> dict[str, object]:
@@ -773,82 +454,3 @@ def _compact_suggested_move(move: dict[str, object]) -> dict[str, object]:
         "produced_files": move.get("produced_files"),
         "reason": move.get("reason"),
     }
-
-
-def _print_source_split_payload(payload: dict[str, object]) -> None:
-    if "source" in payload:
-        print(f"Source: {payload['source']}")
-    agent = payload.get("agent")
-    if isinstance(agent, dict):
-        print(f"Decision: {agent.get('decision')} confidence={agent.get('confidence')}")
-        print(f"Summary: {agent.get('summary')}")
-        print(f"Next: {agent.get('next_step')}")
-        safe_moves = agent.get("safe_moves")
-        if isinstance(safe_moves, dict):
-            groups = safe_moves.get("groups") or []
-            for raw in groups if isinstance(groups, list) else []:
-                if isinstance(raw, dict):
-                    print(
-                        f"Safe move {raw.get('seed')}: {raw.get('code_lines')} lines -> "
-                        f"{', '.join(str(name) for name in raw.get('symbols') or [])}"
-                    )
-        notes = agent.get("review_notes") or []
-        if isinstance(notes, list):
-            for note in notes:
-                print(f"Review: {note}")
-        verifications = agent.get("verification_commands") or []
-        if isinstance(verifications, list):
-            for command in verifications:
-                print(f"Verify: {command}")
-        return
-    symbols = payload.get("symbols")
-    if isinstance(symbols, list):
-        for raw in symbols:
-            if not isinstance(raw, dict):
-                continue
-            refs = raw.get("references") or []
-            refs_text = f" refs={','.join(refs)}" if refs else ""
-            tags = raw.get("tags") or []
-            tags_text = f" tags={','.join(tags)}" if tags else ""
-            print(
-                f"{raw['start_line']:>5}-{raw['end_line']:<5} "
-                f"{raw['code_lines']:>4} {raw['kind']:<16} "
-                f"{raw['signature']}{tags_text}{refs_text}"
-            )
-        return
-
-    files = payload.get("files")
-    if isinstance(files, list):
-        for raw in files:
-            if not isinstance(raw, dict):
-                continue
-            print(f"{raw['code_lines']:>5} {raw['path']}")
-        return
-
-    assessments = payload.get("assessments")
-    if isinstance(assessments, list):
-        summary = payload.get("summary")
-        if isinstance(summary, dict):
-            print(
-                f"Oversized: {summary.get('oversized_files')} "
-                f"excess={summary.get('total_excess_lines')} "
-                f"estimated_moved={summary.get('estimated_moved_code_lines')}"
-            )
-        for raw in assessments:
-            if not isinstance(raw, dict):
-                continue
-            agent_value = raw.get("agent")
-            agent = agent_value if isinstance(agent_value, dict) else {}
-            print(
-                f"{raw.get('code_lines'):>5} {raw.get('source')} "
-                f"decision={agent.get('decision')} confidence={agent.get('confidence')}"
-            )
-        return
-
-    moves = payload.get("moves")
-    for raw in moves if isinstance(moves, list | tuple) else ():
-        if isinstance(raw, dict):
-            print(f"Move -> {raw['target']}: {', '.join(raw['symbols'])}")
-    warnings = payload.get("warnings")
-    for warning in warnings if isinstance(warnings, list | tuple) else ():
-        print(f"Warning: {warning}")

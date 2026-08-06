@@ -109,7 +109,7 @@ def import_impact_report(
     moved = {name for move in moves for name in move.symbols}
     if not moved:
         return []
-    if source.suffix in (".ts", ".tsx", ".js", ".jsx"):
+    if source.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"):
         return _text_import_impact(source, moves, moved, limit=limit)
     if source.suffix != ".py":
         return []
@@ -160,7 +160,7 @@ def _text_import_impact(
     targets_by_symbol = {name: move.target for move in moves for name in move.symbols}
     report: list[dict[str, object]] = []
     for path, text, capped in _project_source_files(
-        source, moves, suffixes=(".ts", ".tsx", ".js", ".jsx")
+        source, moves, suffixes=(".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
     ):
         if capped:
             break

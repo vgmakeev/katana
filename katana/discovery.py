@@ -132,7 +132,7 @@ def resolve_source_split_extensions(
 def project_source_split_plan(
     roots: list[Path],
     *,
-    max_lines: int = 750,
+    max_lines: int = 500,
     profiles: tuple[str, ...] = ("auto",),
     extensions: tuple[str, ...] = (),
     exclude_dirs: tuple[str, ...] = (
@@ -197,7 +197,7 @@ def project_source_split_plan(
 def assess_source_split(
     source: Path,
     *,
-    max_lines: int = 750,
+    max_lines: int = 500,
     target_prefix: str | None = None,
     write_plan: bool = False,
     headroom_lines: int | None = None,

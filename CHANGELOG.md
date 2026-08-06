@@ -5,6 +5,16 @@ then, compatibility promises are scoped explicitly below.
 
 ## Unreleased
 
+### Added
+
+- Native `.mjs` and `.cjs` discovery through the JavaScript adapter.
+- A repository gate targeting 500 source lines with a hard 550-line ceiling.
+
+### Changed
+
+- Split CLI parsing/output, apply I/O/validation, bridge module resolution,
+  and source-split tests into cohesive files under the source budget.
+
 ## 0.1.0 - 2026-08-06
 
 ### Added

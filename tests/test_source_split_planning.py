@@ -39,7 +39,7 @@ def _symbol_body(path: Path, name: str) -> str:
 
 def _normalized_body(path: Path, name: str) -> str:
     body = _symbol_body(path, name)
-    if path.suffix in (".ts", ".tsx", ".js", ".jsx") and body.startswith("export "):
+    if path.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs") and body.startswith("export "):
         return body.removeprefix("export ")
     return body
 

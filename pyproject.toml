@@ -36,6 +36,7 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 katana = [
     "ast_bridge.mjs",
+    "ast_bridge_modules.mjs",
     "dart_ast.dart",
     "py.typed",
 ]
@@ -65,4 +66,4 @@ extend-select = ["I", "N", "UP", "B", "C4", "SIM", "T20", "TID", "ASYNC", "RUF"]
 ignore = ["RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
-"katana/cli.py" = ["T20"]
+"katana/cli*.py" = ["T20"]

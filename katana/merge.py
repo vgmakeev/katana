@@ -124,7 +124,7 @@ def merge_text_into_existing_target(
         source.suffix,
     )
     source_imports_target = keep_compat_imports and (
-        source.suffix in (".ts", ".tsx", ".js", ".jsx")
+        source.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
         or any(not name.startswith("_") for name in move.symbols)
         or bool(staying_refs & set(move.symbols))
     )
@@ -397,7 +397,7 @@ def _text_dependency_imports(
         if source.suffix == ".dart":
             module = _relative_uri(target, ref_target)
             lines.append(f"import '{module}' show {', '.join(unique)};\n")
-        elif source.suffix in (".ts", ".tsx", ".js", ".jsx"):
+        elif source.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"):
             module = _js_relative_module_name(target, ref_target)
             lines.extend(_ts_named_lines("import", module, unique, symbols))
     if lines:
@@ -422,7 +422,7 @@ def _insert_text_imports(lines: list[str], imports: list[str], suffix: str) -> l
         if suffix == ".dart" and stripped.startswith(("library ", "import ", "export ", "part ")):
             end = index + 1
             continue
-        if suffix in (".ts", ".tsx", ".js", ".jsx") and stripped.startswith(
+        if suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs") and stripped.startswith(
             ("import ", "import type ", "export {", "export type {", "export *")
         ):
             open_braces = line.count("{") - line.count("}")

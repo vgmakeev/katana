@@ -8,7 +8,7 @@ _TS_TYPE_KINDS = {"InterfaceDeclaration", "TypeAliasDeclaration", "interface", "
 
 
 def _text_leading_block(source: Path, lines: list[str]) -> list[str]:
-    if source.suffix in (".ts", ".tsx", ".js", ".jsx"):
+    if source.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"):
         return _typescript_leading_block(lines)
     if source.suffix == ".dart":
         return _dart_leading_block(lines)
@@ -95,7 +95,7 @@ def _apply_text_compat_exports(
         return _insert_after_text_leading_block(source, lines, _dart_compat_lines(source, moves))
     if source.suffix == ".css":
         return _insert_after_text_leading_block(source, lines, _css_compat_lines(source, moves))
-    if source.suffix not in (".ts", ".tsx", ".js", ".jsx"):
+    if source.suffix not in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"):
         return lines
     moved = {name for move in moves for name in move.symbols}
     staying_refs = {
@@ -125,7 +125,7 @@ def _apply_text_usage_imports(
     moves: tuple[SourceSplitMove, ...],
     symbols: list[SourceSymbol],
 ) -> list[str]:
-    if source.suffix not in (".ts", ".tsx", ".js", ".jsx", ".dart"):
+    if source.suffix not in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".dart"):
         return lines
     moved = {name for move in moves for name in move.symbols}
     staying_refs = {

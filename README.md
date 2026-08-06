@@ -94,12 +94,16 @@ paths passed to it even when executed from `uvx`'s isolated environment.
 
 ```bash
 uvx --from git+https://github.com/vgmakeev/kanata.git \
-  katana large . --max-lines 750 --json
+  katana large . --max-lines 500 --json
 ```
 
 `large` scans project folders recursively and uses language-aware code LOC.
 Generated and dependency directories such as `.git`, `.venv`, `node_modules`,
 `dist`, and `build` are excluded by default.
+
+Katana itself targets 500 lines per source file and enforces a hard 550-line
+ceiling, leaving 10% headroom for cohesive changes before a split is required.
+The repository gate checks both language-aware code LOC and physical lines.
 
 ### 2. Map one file without exposing its body
 
@@ -125,7 +129,7 @@ Source bodies are deliberately absent.
 ```bash
 uvx --from git+https://github.com/vgmakeev/kanata.git \
   katana assess src/big_module.py \
-  --max-lines 750 --write-plan --json
+  --max-lines 500 --write-plan --json
 ```
 
 The agent chooses responsibility boundaries, target names, and compatible move
@@ -161,7 +165,7 @@ touched file.
 ### A prompt you can give an agent
 
 ```text
-Use Katana to find files over 750 code LOC. For each candidate, inspect the
+Use Katana to find files over 500 code LOC. For each candidate, inspect the
 source-free map before reading source. Design cohesive responsibility
 boundaries, edit Katana's explicit plan, run apply --check, then apply with
 typechecking. Keep the mechanical split separate from semantic changes.
@@ -175,7 +179,7 @@ The complete automation contract is in
 | Stack | Architecture map | Rewrite posture | Detected project tools |
 | --- | --- | --- | --- |
 | Python | stdlib AST | safe top-level split | Ruff, optional mypy |
-| TypeScript / JavaScript / TSX / JSX | TypeScript Compiler API or structural fallback | review + compiler validation | Prettier, ESLint, optional `tsc` |
+| TypeScript / JavaScript / TSX / JSX / ESM / CJS | TypeScript Compiler API or structural fallback | review + compiler validation | Prettier, ESLint, optional `tsc` |
 | Dart | analyzer package or structural fallback | review + analyzer/tests | `dart format` |
 | CSS | PostCSS or structural fallback | prefix/order constrained | Prettier |
 | Markdown | exact heading spans, optional TanStack AST enrichment | safe section split | Prettier |

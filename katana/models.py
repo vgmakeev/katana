@@ -16,6 +16,8 @@ WEB_SOURCE_SPLIT_EXTENSIONS = (
     ".tsx",
     ".js",
     ".jsx",
+    ".mjs",
+    ".cjs",
     ".css",
 )
 
@@ -31,6 +33,8 @@ SOURCE_SPLIT_EXTENSIONS = (
     ".tsx",
     ".js",
     ".jsx",
+    ".mjs",
+    ".cjs",
     ".dart",
     ".css",
     ".md",
@@ -54,6 +58,8 @@ TEXT_SPLIT_EXTENSIONS = (
     ".tsx",
     ".js",
     ".jsx",
+    ".mjs",
+    ".cjs",
     ".dart",
     ".css",
     ".md",

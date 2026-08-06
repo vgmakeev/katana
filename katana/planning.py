@@ -23,7 +23,7 @@ def _build_python_split_plan(
     symbols: list[SourceSymbol],
     *,
     code_lines: int,
-    max_lines: int = 750,
+    max_lines: int = 500,
     headroom_lines: int = 0,
     target_prefix: str | None = None,
 ) -> SourceSplitPlan:
@@ -179,7 +179,7 @@ def _build_source_split_plan(
     symbols: list[SourceSymbol],
     *,
     code_lines: int,
-    max_lines: int = 750,
+    max_lines: int = 500,
     headroom_lines: int = 0,
     target_prefix: str | None = None,
 ) -> SourceSplitPlan:
@@ -200,7 +200,7 @@ def _build_text_split_plan(
     symbols: list[SourceSymbol],
     *,
     code_lines: int,
-    max_lines: int = 750,
+    max_lines: int = 500,
     headroom_lines: int = 0,
     target_prefix: str | None = None,
     reference_aware: bool,

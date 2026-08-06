@@ -5,7 +5,15 @@ import os
 
 import pytest
 
-from katana.cli import main
+from katana.cli import build_parser, main
+
+
+@pytest.mark.parametrize("command", ("assess", "large", "project"))
+def test_source_commands_default_to_the_500_line_target(command: str) -> None:
+    roots = ["source.py"] if command == "assess" else ["."]
+    args = build_parser().parse_args([command, *roots])
+
+    assert args.max_lines == 500
 
 
 def test_katana_cli_outline_assess_and_apply(
