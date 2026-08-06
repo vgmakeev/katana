@@ -5,6 +5,8 @@ then, compatibility promises are scoped explicitly below.
 
 ## Unreleased
 
+## 0.4.67 - 2026-08-06
+
 ### Added
 
 - `DocumentIR` v2 and the source-free `katana map` command.
