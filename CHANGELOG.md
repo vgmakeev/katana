@@ -15,6 +15,11 @@ then, compatibility promises are scoped explicitly below.
 - Bundled language adapters under `katana.adapters.<stack>`.
 - Public toolchain adapters and the `katana.toolchains` entry-point group.
 
+### Changed
+
+- The standalone distribution is named `katana-agent`; the import package,
+  CLI, and adapter entry points remain `katana`.
+
 ### Compatibility
 
 - Split-plan v1 remains unchanged.

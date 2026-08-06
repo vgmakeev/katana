@@ -72,9 +72,18 @@ uv tool install git+https://github.com/vgmakeev/kanata.git
 katana --help
 ```
 
+The Python distribution is named `katana-agent`; the import package and CLI
+remain `katana`. After the first PyPI release, the equivalent commands are:
+
+```bash
+uvx --from katana-agent katana --help
+uv tool install katana-agent
+```
+
 > [!IMPORTANT]
 > The unrelated `katana` name on PyPI belongs to another project. Use the
-> GitHub source shown above; do not run bare `uvx katana`.
+> `katana-agent` distribution or the GitHub source shown above; do not install
+> the PyPI distribution named `katana`.
 
 Katana runs inside the caller's working directory. It can inspect the project
 paths passed to it even when executed from `uvx`'s isolated environment.
