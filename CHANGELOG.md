@@ -8,7 +8,7 @@ then, compatibility promises are scoped explicitly below.
 ### Added
 
 - Native `.mjs` and `.cjs` discovery through the JavaScript adapter.
-- A repository gate targeting 500 source lines with a hard 550-line ceiling.
+- A repository gate enforcing a hard 500-line ceiling.
 
 ### Changed
 

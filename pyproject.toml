@@ -36,6 +36,7 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 katana = [
     "ast_bridge.mjs",
+    "ast_bridge_markdown.mjs",
     "ast_bridge_modules.mjs",
     "dart_ast.dart",
     "py.typed",

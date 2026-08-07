@@ -101,8 +101,7 @@ uvx --from git+https://github.com/vgmakeev/kanata.git \
 Generated and dependency directories such as `.git`, `.venv`, `node_modules`,
 `dist`, and `build` are excluded by default.
 
-Katana itself targets 500 lines per source file and enforces a hard 550-line
-ceiling, leaving 10% headroom for cohesive changes before a split is required.
+Katana itself enforces a hard 500-line ceiling per source file.
 The repository gate checks both language-aware code LOC and physical lines.
 
 ### 2. Map one file without exposing its body

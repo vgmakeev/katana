@@ -39,7 +39,7 @@ Katana is an agent-first, deterministic polyglot refactoring executor.
 
 ## Source budget
 
-- Design source files around 500 physical and language-aware code lines.
-- The hard repository ceiling is 550 lines: the 500-line target plus 10% headroom.
+- Keep source files within 500 physical and language-aware code lines.
+- The hard repository ceiling is 500 lines.
 - `make size-check` enforces both measures across runtime, tests, and examples.
 - Split by cohesive responsibility before raising the ceiling or adding exclusions.
