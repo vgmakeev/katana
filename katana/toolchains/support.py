@@ -11,9 +11,10 @@ DEFAULT_TOOL_TIMEOUT_SECONDS = 300.0
 
 def tool_command(context: ToolchainContext, tool: str) -> list[str] | None:
     for ancestor in context.ancestors:
-        local = ancestor / "node_modules" / ".bin" / tool
-        if local.exists():
-            return [str(local)]
+        local_bin = ancestor / "node_modules" / ".bin"
+        resolved = shutil.which(tool, path=str(local_bin))
+        if resolved:
+            return [resolved]
     resolved = shutil.which(tool)
     return [resolved] if resolved else None
 
@@ -114,6 +115,6 @@ def int_or_none(value: object) -> int | None:
 
 def read_text(path: Path) -> str:
     try:
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
     except OSError:
         return ""

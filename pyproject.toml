@@ -1,8 +1,10 @@
 [project]
-name = "mini-katana"
-version = "0.4.67"
+name = "katana-agent"
+version = "0.2.0"
 description = "Deterministic polyglot refactoring executor for coding agents"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = []
 keywords = ["ai-agents", "ast", "refactoring", "developer-tools", "code-intelligence"]
@@ -23,7 +25,7 @@ Repository = "https://github.com/vgmakeev/kanata"
 Issues = "https://github.com/vgmakeev/kanata/issues"
 
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -34,6 +36,8 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 katana = [
     "ast_bridge.mjs",
+    "ast_bridge_markdown.mjs",
+    "ast_bridge_modules.mjs",
     "dart_ast.dart",
     "py.typed",
 ]
@@ -63,4 +67,4 @@ extend-select = ["I", "N", "UP", "B", "C4", "SIM", "T20", "TID", "ASYNC", "RUF"]
 ignore = ["RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
-"katana/cli.py" = ["T20"]
+"katana/cli*.py" = ["T20"]

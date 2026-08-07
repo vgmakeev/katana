@@ -1,168 +1,138 @@
+<div align="center">
+
 # Katana
 
-Katana is a refactoring executor for coding agents. It lets an agent redesign a
-large file without reading the whole file into its context:
+**Give the agent structure. Let Katana move the code.**
+
+Deterministic, polyglot refactoring infrastructure for coding agents.
+
+[![CI](https://github.com/vgmakeev/kanata/actions/workflows/ci.yml/badge.svg)](https://github.com/vgmakeev/kanata/actions/workflows/ci.yml)
+[![Apache-2.0](https://img.shields.io/github/license/vgmakeev/kanata)](LICENSE)
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Zero runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-2ea44f)](pyproject.toml)
+
+</div>
+
+Katana lets an AI agent redesign a large file without loading the whole file
+into its context. It turns source into a compact architecture map, accepts an
+explicit split plan, moves the selected source ranges byte-for-byte, and then
+runs the project's own formatter, linter, and typechecker.
 
 ```text
-source file -> compact architecture map -> agent-authored split plan
-            -> deterministic rewrite -> formatter/linter/typecheck -> report
+large source file
+      │
+      ▼
+source-free map ──► agent designs boundaries ──► explicit split plan
+                                                        │
+                                                        ▼
+fresh maps ◄── format · lint · typecheck ◄── deterministic rewrite
 ```
 
-Katana does not ask an LLM to copy code between files. Language adapters inspect
-the source with the best parser available, expose signatures and constraints,
-and move the selected source ranges byte-for-byte.
+The agent owns architecture. Katana owns mechanics.
 
-The primary user is an AI agent, not a human at a terminal. Commands are
-non-interactive, JSON contracts are stable, maps are source-free, and every
-mutation can be checked before it is committed.
+## Why Katana?
 
-Katana requires Python 3.14 and has no mandatory runtime dependencies.
+Coding agents are good at architectural reasoning and bad at mechanically
+copying thousands of tokens between files. Reading the entire source also
+wastes context before the agent has decided what it needs.
 
-## Install from GitHub
+Katana changes that boundary:
+
+- **Small context:** the agent receives LOC, signatures, relationships,
+  constraints, and exact spans—not source bodies.
+- **Deterministic edits:** source ranges are moved byte-for-byte; Katana does
+  not ask an LLM to reproduce code.
+- **Fail-closed adapters:** unsupported semantics become visible limitations,
+  never optimistic rewrite claims.
+- **Native verification:** Katana invokes tools already configured by the
+  project, such as Ruff, ESLint, Prettier, `tsc`, mypy, and `dart format`.
+- **Agent-native protocol:** commands are non-interactive, JSON is versioned,
+  and every mutation has a dry-run.
+- **Tiny core:** Python 3.14, zero mandatory runtime dependencies.
+
+## Run with `uvx`
+
+No installation is required:
+
+```bash
+uvx --from git+https://github.com/vgmakeev/kanata.git katana --help
+```
+
+For a reproducible agent environment, pin a release tag or commit:
+
+```bash
+uvx --from git+https://github.com/vgmakeev/kanata.git@<tag-or-commit> \
+  katana map src/big_module.py --json
+```
+
+For a persistent installation:
 
 ```bash
 uv tool install git+https://github.com/vgmakeev/kanata.git
 katana --help
 ```
 
-The repository is named `kanata`; the established Python import and CLI remain
-`katana`. The PyPI distribution remains `mini-katana` for compatibility until a
-standalone distribution name is selected.
-
-## Quick start
+The Python distribution is named `katana-agent`; the import package and CLI
+remain `katana`. After the first PyPI release, the equivalent commands are:
 
 ```bash
-# Find oversized files using language-aware LOC counters.
-katana large src docs --max-lines 750 --json
-
-# Give the agent a compact map, not the source body.
-katana map src/big_module.py --json
-
-# Produce a safe-move menu and an editable plan.
-katana assess src/big_module.py --max-lines 750 --write-plan --json
-
-# Validate without writing, then apply and run detected project tools.
-katana apply src/big_module.py --plan-file src/big_module.katana.json --check --json
-katana apply src/big_module.py --plan-file src/big_module.katana.json --typecheck --json
+uvx --from katana-agent katana --help
+uv tool install katana-agent
 ```
 
-The agent owns architecture: responsibility boundaries, target names, and the
-final choice of move groups. Katana owns mechanics: spans, dependency closure,
-import surgery, collision checks, formatting, diagnostics, and post-write maps.
+> [!IMPORTANT]
+> The unrelated `katana` name on PyPI belongs to another project. Use the
+> `katana-agent` distribution or the GitHub source shown above; do not install
+> the PyPI distribution named `katana`.
 
-## Agent contract
+Katana runs inside the caller's working directory. It can inspect the project
+paths passed to it even when executed from `uvx`'s isolated environment.
 
-`katana map` emits `DocumentIR` version 2. It contains:
+## The agent loop
+
+### 1. Find files over the line budget
+
+```bash
+uvx --from git+https://github.com/vgmakeev/kanata.git \
+  katana large . --max-lines 500 --json
+```
+
+`large` scans project folders recursively and uses language-aware code LOC.
+Generated and dependency directories such as `.git`, `.venv`, `node_modules`,
+`dist`, and `build` are excluded by default.
+
+Katana itself enforces a hard 500-line ceiling per source file.
+The repository gate checks both language-aware code LOC and physical lines.
+
+### 2. Map one file without exposing its body
+
+```bash
+uvx --from git+https://github.com/vgmakeev/kanata.git \
+  katana map src/big_module.py --json
+```
+
+`map` emits `DocumentIR` v2 with:
 
 - physical and code LOC;
-- symbol signatures and nested symbol summaries;
-- deterministic symbol ids and byte-exact, end-exclusive source spans;
-- local references with an explicit confidence level;
-- move constraints such as `closure`, `pinned`, and `preserve` order;
-- parser capabilities and limitations;
-- safe move groups the agent may compose.
+- top-level and nested signatures;
+- deterministic symbol IDs;
+- byte-exact, end-exclusive source spans;
+- local references and confidence levels;
+- move constraints and safe composition groups;
+- parser capabilities and explicit limitations.
 
-It deliberately contains no source bodies. The existing `outline` payload and
-split-plan version 1 remain supported for compatibility.
+Source bodies are deliberately absent.
 
-The canonical agent loop is documented in
-[the agent protocol](docs/AGENT_PROTOCOL.md).
-
-## Polyglot adapters
-
-There is no honest universal AST: parsers disagree on trivia, scopes, bindings,
-module systems, and error recovery. Katana makes the intermediate representation
-universal instead. An adapter may use:
-
-1. a native compiler API for the highest semantic precision;
-2. Tree-sitter or ast-grep for broad concrete-syntax coverage;
-3. LSP/SCIP for resolved symbols and workspace references;
-4. a conservative structural scanner as a read-only fallback.
-
-Every adapter reports capabilities separately for source locations, hierarchy,
-comments, local bindings, module/workspace rewrites, formatting, and validation.
-Missing semantics therefore degrade visibly instead of pretending to be safe.
-
-Built-ins cover Python, TypeScript/JavaScript, Dart, CSS, Markdown, and MDX.
-Run `katana adapters --json` or `katana adapters path/to/file --check --json` to
-inspect parser availability and validate an adapter's output.
-
-Bundled languages use the same public contracts as third-party packages. Their
-adapter boundaries live under `katana.adapters.<stack>` and their
-post-processing under `katana.toolchains.<stack>`; core contains no
-stack-selection branches.
-
-| Stack | Preferred backend | Conservative fallback |
-| --- | --- | --- |
-| Python | stdlib AST | none required |
-| TypeScript/JavaScript | TypeScript compiler API | structural scanner |
-| Dart | analyzer package | structural scanner |
-| CSS | PostCSS | structural scanner |
-| Markdown/MDX | exact heading spans + optional TanStack AST | heading spans |
-| Any other stack | Python entry point or JSON command adapter | analysis-only |
-
-### Adding a language
-
-Analysis-only adapters are intentionally small and cannot rewrite files:
-
-```python
-from katana import AnalysisLanguageAdapter
-
-class GoAdapter(AnalysisLanguageAdapter):
-    id = "tree-sitter-go"
-    extensions = (".go",)
-    profiles = ("go", "all")
-
-    def language_for(self, path):
-        return "go"
-
-    def capabilities(self, path):
-        ...
-
-    def outline(self, path):
-        ...  # Return ordered SourceSymbol values with exact line spans.
-```
-
-Publish the instance or class through the Python entry-point group
-`katana.adapters`:
-
-```toml
-[project.entry-points."katana.adapters"]
-go = "katana_go:GoAdapter"
-```
-
-For adapters written in Go, Rust, Node, JVM languages, or any other stack, add
-`.katana/adapters.json` and implement the versioned stdin/stdout JSON protocol.
-Command protocol v1 is deliberately analysis-only and refuses rewrite. See
-[the adapter SDK](docs/ADAPTERS.md).
-
-Formatter, lint-fix, and checker integrations are independent toolchain
-adapters. Publish them through `katana.toolchains`; see
-[the toolchain SDK](docs/TOOLCHAINS.md).
-
-Start with map/LOC support. Implement rewrite only after the adapter can prove
-source locations, dependency closure, module edits, formatting, and validation.
-Katana's conformance checker rejects stale hashes, duplicate ids, invalid spans,
-and dangling reference targets.
-
-## Markdown
-
-Markdown is a document language, so Katana maps and moves heading sections just
-like code symbols. Exact spans come from Katana's source scanner. If
-`@tanstack/markdown` is installed, its deterministic AST enriches the map with a
-compact node summary. It is not used as the span authority because its heading
-callbacks are not a general source-location API.
+### 3. Produce and refine a plan
 
 ```bash
-npm install                         # installs the optional AST enrichment here
-katana map docs/long-guide.md --json
-katana assess docs/long-guide.md --max-lines 500 --write-plan --json
+uvx --from git+https://github.com/vgmakeev/kanata.git \
+  katana assess src/big_module.py \
+  --max-lines 500 --write-plan --json
 ```
 
-MDX remains conservative: Katana can split heading sections, but reports that
-imports and rendered links still require project validation.
-
-## Split plan
+The agent chooses responsibility boundaries, target names, and compatible move
+groups. The plan is intentionally simple and reviewable:
 
 ```json
 {
@@ -174,32 +144,139 @@ imports and rendered links still require project validation.
 }
 ```
 
-Targets are resolved relative to the source directory. Existing targets are
-merged only after collision and cycle checks. `--force` accepts warnings where
-the language adapter allows it. Run `katana schema --json` for the full schema.
+### 4. Dry-run, apply, and verify
 
-## Safety model
+```bash
+uvx --from git+https://github.com/vgmakeev/kanata.git \
+  katana apply src/big_module.py \
+  --plan-file src/big_module.katana.json --check --json
 
-- Source bodies are moved byte-for-byte.
-- Unsupported semantics are capabilities and warnings, never hidden guesses.
-- `apply --check` performs the rewrite in a temporary tree first.
-- Targets, collisions, cycles, parser output, and line budgets are validated.
-- Project-local formatters, linters, and optional typecheckers are detected and
-  their normalized diagnostics are returned to the agent.
-- External parser/tool processes are timeout-bounded and failures fall back or
-  become explicit diagnostics.
+uvx --from git+https://github.com/vgmakeev/kanata.git \
+  katana apply src/big_module.py \
+  --plan-file src/big_module.katana.json --typecheck --json
+```
 
-Katana currently performs one-file architectural splits. Workspace-wide import
-rewrites and richer Tree-sitter/LSP adapters are the next protocol layer, not an
-implicit promise of the current adapters.
+The dry-run executes the rewrite in a temporary tree. The real apply checks
+collisions and cycles, updates language-level imports/exports where supported,
+runs detected project tools, and returns diagnostics plus fresh maps for every
+touched file.
 
-## Project documents
+### A prompt you can give an agent
 
-- [Architecture](ARCHITECTURE.md)
-- [Agent protocol](docs/AGENT_PROTOCOL.md)
+```text
+Use Katana to find files over 500 code LOC. For each candidate, inspect the
+source-free map before reading source. Design cohesive responsibility
+boundaries, edit Katana's explicit plan, run apply --check, then apply with
+typechecking. Keep the mechanical split separate from semantic changes.
+```
+
+The complete automation contract is in
+[`docs/AGENT_PROTOCOL.md`](docs/AGENT_PROTOCOL.md).
+
+## Supported stacks
+
+| Stack | Architecture map | Rewrite posture | Detected project tools |
+| --- | --- | --- | --- |
+| Python | stdlib AST | safe top-level split | Ruff, optional mypy |
+| TypeScript / JavaScript / TSX / JSX / ESM / CJS | TypeScript Compiler API or structural fallback | review + compiler validation | Prettier, ESLint, optional `tsc` |
+| Dart | analyzer package or structural fallback | review + analyzer/tests | `dart format` |
+| CSS | PostCSS or structural fallback | prefix/order constrained | Prettier |
+| Markdown | exact heading spans, optional TanStack AST enrichment | safe section split | Prettier |
+| MDX | heading structure, optional AST enrichment | conservative; verify imports and links | Prettier |
+| Any other language | Python or JSON command adapter | analysis-only by default | external toolchain adapter |
+
+Run the conformance check to see exactly what is available for a file:
+
+```bash
+katana adapters path/to/file --check --json
+```
+
+There is no honest universal AST. Compiler APIs, Tree-sitter, LSPs, and
+document parsers disagree about trivia, scopes, bindings, and recovery. Katana
+makes the intermediate representation universal instead and requires every
+adapter to report its actual capabilities.
+
+## Markdown is source too
+
+Long documentation consumes agent context just like long code. Katana treats
+Markdown headings as ordered symbols with exact spans:
+
+```bash
+katana map docs/long-guide.md --json
+katana assess docs/long-guide.md --max-lines 500 --write-plan --json
+```
+
+If `@tanstack/markdown` is installed in the project, Katana enriches the map
+with a compact document-AST summary. Exact move coordinates still come from
+Katana's heading spans, so the optional parser never becomes an implicit source
+rewriter.
+
+## Safety invariants
+
+- Mechanical moves preserve source bytes and newline style.
+- Content hashes guard adapter input against stale files.
+- `apply --check` never writes the working tree.
+- Targets, duplicate symbols, collisions, cycles, and resulting line budgets
+  are validated.
+- Analysis-only adapters cannot advertise executable moves.
+- External parser and tool processes are timeout-bounded and their diagnostics
+  are normalized for the agent.
+- Toolchain failures are reported; they do not disappear behind a successful
+  rewrite.
+
+Katana currently performs **one-file architectural splits**. Project-wide
+import rewriting is deliberately outside the current contract. This boundary
+keeps the tool predictable while richer workspace adapters evolve.
+
+Running Katana on an untrusted repository is equivalent to running that
+repository's development toolchain. Read the [security policy](SECURITY.md)
+before enabling project-local command adapters.
+
+## Extend Katana
+
+Language analysis and post-processing are independent extension points:
+
+```toml
+[project.entry-points."katana.adapters"]
+go = "katana_go:GoAdapter"
+
+[project.entry-points."katana.toolchains"]
+go = "katana_go:GofmtToolchain"
+```
+
+Adapters written in Go, Rust, Node, JVM languages, or any other stack can use
+the versioned stdin/stdout JSON command protocol instead. Command protocol v1
+is analysis-only and refuses rewrite by design.
+
+Start with LOC and architecture maps. Add rewrite only after the adapter can
+prove exact locations, dependency closure, module edits, formatting, and
+validation.
+
 - [Adapter SDK](docs/ADAPTERS.md)
 - [Toolchain SDK](docs/TOOLCHAINS.md)
+- [Architecture](ARCHITECTURE.md)
 - [Compatibility policy](docs/COMPATIBILITY.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Release checklist](docs/RELEASING.md)
+
+## Development
+
+```bash
+git clone https://github.com/vgmakeev/kanata.git
+cd kanata
+uv sync --all-groups
+make check
+make markdown-check
+```
+
+The complete gate covers Python 3.14, Ruff, formatting, strict mypy, pytest,
+and the optional Node bridge. GitHub Actions runs the suite on Linux, macOS,
+and Windows and validates both wheel and source distributions.
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and
+keep protocol changes backward-compatible and fail-closed.
+
+## License
+
+Katana is licensed under [Apache-2.0](LICENSE). Commercial use, modification,
+distribution, and inclusion in proprietary products are permitted, subject to
+the license terms. Apache-2.0 also provides an explicit patent grant from
+contributors.

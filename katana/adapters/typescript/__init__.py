@@ -10,7 +10,7 @@ from katana.models import SourceSymbol
 
 class TypeScriptAdapter(BundledLanguageAdapter):
     id = "node_typescript"
-    extensions = (".ts", ".tsx", ".js", ".jsx")
+    extensions = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
     profiles = ("web", "admin", "next", "all")
     reference_aware = True
     legacy_adapter_payload = True
@@ -21,6 +21,8 @@ class TypeScriptAdapter(BundledLanguageAdapter):
             ".tsx": "typescriptreact",
             ".js": "javascript",
             ".jsx": "javascriptreact",
+            ".mjs": "javascript",
+            ".cjs": "javascript",
         }[path.suffix]
 
     def capabilities(self, path: Path) -> AdapterCapabilities:

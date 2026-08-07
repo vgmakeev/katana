@@ -17,13 +17,12 @@ from .models import (
     source_split_extensions_for_profiles,
 )
 from .outline import outline_source_file, source_language, source_parser_capabilities
-from .planning import (
-    _build_source_split_plan,
-    _suggested_plan_payload,
-)
+from .planning import _build_source_split_plan
 from .planning import (
     source_safe_move_groups as source_safe_move_groups,  # noqa: PLC0414 (explicit re-export, checked by mypy)
 )
+from .planning_payload import _suggested_plan_payload
+from .source_io import read_source_text
 
 
 def large_source_files(
@@ -50,7 +49,7 @@ def large_source_files(
             if not path.is_file() or path.suffix not in wanted or _is_excluded(path, exclude_dirs):
                 continue
             try:
-                text = path.read_text()
+                text = read_source_text(path)
             except UnicodeDecodeError:
                 continue
             code_lines = _source_code_line_count(path, text)
@@ -131,7 +130,7 @@ def resolve_source_split_extensions(
 def project_source_split_plan(
     roots: list[Path],
     *,
-    max_lines: int = 750,
+    max_lines: int = 500,
     profiles: tuple[str, ...] = ("auto",),
     extensions: tuple[str, ...] = (),
     exclude_dirs: tuple[str, ...] = (
@@ -196,7 +195,7 @@ def project_source_split_plan(
 def assess_source_split(
     source: Path,
     *,
-    max_lines: int = 750,
+    max_lines: int = 500,
     target_prefix: str | None = None,
     write_plan: bool = False,
     headroom_lines: int | None = None,
@@ -205,7 +204,7 @@ def assess_source_split(
     from .adapters import language_adapter_for, legacy_capabilities_for
 
     adapter = language_adapter_for(source)
-    text = source.read_text()
+    text = read_source_text(source)
     code_lines = adapter.code_line_count(text)
     capabilities = adapter.capabilities(source)
     parser = legacy_capabilities_for(adapter, source, capabilities)
@@ -319,7 +318,7 @@ def assess_source_split(
 
 
 def source_code_line_count(path: Path, text: str | None = None) -> int:
-    return _source_code_line_count(path, path.read_text() if text is None else text)
+    return _source_code_line_count(path, read_source_text(path) if text is None else text)
 
 
 def _python_code_line_count(text: str) -> int:
@@ -417,7 +416,7 @@ def _has_flutter_project(root: Path, exclude_dirs: tuple[str, ...]) -> bool:
     if not pubspec.exists():
         return False
     try:
-        text = pubspec.read_text()
+        text = pubspec.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return False
     return "flutter:" in text or "sdk: flutter" in text
@@ -476,7 +475,7 @@ def _read_json_object(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     try:
-        payload = json.loads(path.read_text())
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}

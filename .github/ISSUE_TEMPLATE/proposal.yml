@@ -1,0 +1,31 @@
+name: Feature proposal
+description: Propose a focused improvement to the agent protocol, CLI, or safety model.
+title: "proposal: "
+labels: ["proposal"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Agent problem
+      description: Describe the concrete workflow limitation, not only the desired command or API.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should the agent be able to do or verify after this change?
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Protocol and compatibility impact
+      description: Note any JSON, CLI, adapter, determinism, or source-privacy implications.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include simpler workflows or external-adapter approaches where applicable.

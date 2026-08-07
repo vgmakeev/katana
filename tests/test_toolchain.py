@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import ast
-import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -83,13 +83,12 @@ def test_toolchain_runs_ruff_from_target_repo_root(
     log = tmp_path / "tool.log"
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    ruff = bin_dir / "ruff"
-    ruff.write_text(
-        f'#!/bin/sh\necho "$PWD :: ruff $@" >> "{log}"\n'
-        'case "$*" in *"--output-format=json"*) printf "[]";; esac\n'
-        "exit 0\n"
+    _write_fake_tool(
+        bin_dir / "ruff",
+        log,
+        json_when="--output-format=json",
+        include_cwd=True,
     )
-    ruff.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
     (tmp_path / ".git").mkdir()
     (tmp_path / "pyproject.toml").write_text(
@@ -235,12 +234,28 @@ def _write_fake_tool(
     *,
     json_when: str | None = None,
     json_payload: object | None = None,
+    include_cwd: bool = False,
 ) -> None:
-    payload = json.dumps(json_payload if json_payload is not None else [])
-    json_case = (
-        f'case "$*" in *"{json_when}"*) cat <<\'JSON\'\n{payload}\nJSON\n;; esac\n'
-        if json_when is not None
-        else ""
+    payload = json_payload if json_payload is not None else []
+    script = path.with_name(f"_{path.name}_fake.py")
+    script.write_text(
+        "import json\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        f"args = ' '.join(sys.argv[1:])\n"
+        f"prefix = f'{{Path.cwd()}} :: ' if {include_cwd!r} else ''\n"
+        f"with Path({str(log)!r}).open('a', encoding='utf-8') as stream:\n"
+        f"    stream.write(prefix + {path.name!r} + ' ' + args + '\\n')\n"
+        f"if {json_when!r} is not None and {json_when!r} in args:\n"
+        f"    print(json.dumps({payload!r}))\n",
+        encoding="utf-8",
     )
-    path.write_text(f'#!/bin/sh\necho "{path.name} $@" >> "{log}"\n{json_case}exit 0\n')
-    path.chmod(0o755)
+    if os.name == "nt":
+        wrapper = path.with_suffix(".cmd")
+        wrapper.write_text(f'@"{sys.executable}" "{script}" %*\n', encoding="utf-8")
+    else:
+        path.write_text(
+            f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n',
+            encoding="utf-8",
+        )
+        path.chmod(0o755)

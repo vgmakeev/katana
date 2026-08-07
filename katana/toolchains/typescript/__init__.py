@@ -15,7 +15,7 @@ from katana.toolchains.support import (
     tool_command,
 )
 
-_SCRIPT_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx")
+_SCRIPT_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 _PRETTIER_EXTENSIONS = (*_SCRIPT_EXTENSIONS, ".css", ".md", ".mdx")
 
 

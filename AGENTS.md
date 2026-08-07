@@ -36,3 +36,10 @@ Katana is an agent-first, deterministic polyglot refactoring executor.
 - Analysis-only support is useful; do not claim rewrite capabilities without
   dependency closure, import handling, formatting, and validation.
 - Preserve source bytes during mechanical moves. Semantic changes are separate.
+
+## Source budget
+
+- Keep source files within 500 physical and language-aware code lines.
+- The hard repository ceiling is 500 lines.
+- `make size-check` enforces both measures across runtime, tests, and examples.
+- Split by cohesive responsibility before raising the ceiling or adding exclusions.
