@@ -5,10 +5,12 @@ then, compatibility promises are scoped explicitly below.
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-07
+
 ### Added
 
 - Native `.mjs` and `.cjs` discovery through the JavaScript adapter.
-- A repository gate targeting 500 source lines with a hard 550-line ceiling.
+- A repository gate enforcing a hard 500-line ceiling.
 
 ### Changed
 

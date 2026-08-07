@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import py_compile
-import re
 from pathlib import Path
 
 from .apply_compat import (
@@ -10,6 +9,14 @@ from .apply_compat import (
     _apply_text_usage_imports,
     _text_leading_block,
     _ts_exported_block,
+)
+from .apply_helpers import (
+    _collapse_blank_lines,
+    _placeholder_target_warnings,
+    _react_refresh_warnings,
+    _remove_ranges,
+    _slice_with_trailing_blank,
+    _symbol_spans,
 )
 from .apply_io import _load_split_plan_payload, _write_split_outputs
 from .apply_validation import _check_code_line_count, _plan_cycle_warnings
@@ -33,14 +40,8 @@ from .models import (
     SourceSplitCheck,
     SourceSplitMove,
     SourceSplitPlan,
-    SourceSymbol,
 )
-from .outline import (
-    _decorated_start_line,
-    _symbol_name,
-    outline_python_module,
-    outline_source_file,
-)
+from .outline import outline_python_module, outline_source_file
 from .source_io import read_source_text
 from .text_cleanup import _prune_text_imports
 from .toolchain import run_toolchain_after_split
@@ -455,83 +456,3 @@ def check_split_result(
             if code_lines > max_lines:
                 oversized.append((path, code_lines))
     return SourceSplitCheck(files=files, max_lines=max_lines, oversized=tuple(oversized))
-
-
-def _placeholder_target_warnings(moves: tuple[SourceSplitMove, ...]) -> list[str]:
-    placeholders = [
-        match.group(1) for move in moves if (match := re.search(r"(_part\d+)$", move.target.stem))
-    ]
-    if not placeholders:
-        return []
-    shown = ", ".join(placeholders[:5])
-    return [
-        (
-            f"{len(placeholders)} targets keep placeholder names ({shown}); "
-            "rename them in the plan for meaningful modules"
-        )
-    ]
-
-
-def _react_refresh_warnings(
-    source: Path,
-    moves: tuple[SourceSplitMove, ...],
-    symbols: dict[str, SourceSymbol],
-) -> list[str]:
-    if source.suffix != ".tsx":
-        return []
-    warnings: list[str] = []
-    for move in moves:
-        moved = [symbols[name] for name in move.symbols if name in symbols]
-        if any("react_component" in symbol.tags for symbol in moved) and any(
-            "react_component" not in symbol.tags for symbol in moved
-        ):
-            warnings.append(
-                f"{move.target} mixes React components and non-component exports; "
-                "verify react-refresh/only-export-components"
-            )
-    return warnings
-
-
-def _symbol_spans(tree: ast.Module) -> dict[str, tuple[int, int]]:
-    spans: dict[str, tuple[int, int]] = {}
-    for node in tree.body:
-        name = _symbol_name(node)
-        if name is not None and node.end_lineno is not None:
-            spans[name] = (_decorated_start_line(node), node.end_lineno)
-    return spans
-
-
-def _slice_with_trailing_blank(lines: list[str], span: tuple[int, int]) -> list[str]:
-    start, end = span
-    zero_start = start - 1
-    zero_end = end
-    while zero_end < len(lines) and not lines[zero_end].strip():
-        zero_end += 1
-        break
-    return lines[zero_start:zero_end]
-
-
-def _remove_ranges(lines: list[str], ranges: list[tuple[int, int]]) -> list[str]:
-    removed: set[int] = set()
-    for start, end in ranges:
-        zero_start = start - 1
-        zero_end = end
-        while zero_end < len(lines) and not lines[zero_end].strip():
-            zero_end += 1
-            break
-        removed.update(range(zero_start, zero_end))
-    return [line for index, line in enumerate(lines) if index not in removed]
-
-
-def _collapse_blank_lines(text: str) -> str:
-    output: list[str] = []
-    blank_count = 0
-    for line in text.splitlines(keepends=True):
-        if line.strip():
-            blank_count = 0
-            output.append(line)
-            continue
-        blank_count += 1
-        if blank_count <= 2:
-            output.append(line)
-    return "".join(output)

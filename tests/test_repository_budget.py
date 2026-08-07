@@ -3,7 +3,7 @@ from pathlib import Path
 from katana import large_source_files, source_split_extensions_for_profiles
 
 BASE_SOURCE_LINES = 500
-MAX_SOURCE_LINES = BASE_SOURCE_LINES + BASE_SOURCE_LINES // 10
+MAX_SOURCE_LINES = BASE_SOURCE_LINES
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOTS = (ROOT / "katana", ROOT / "tests", ROOT / "examples")
 SOURCE_EXTENSIONS = source_split_extensions_for_profiles(("all",))

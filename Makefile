@@ -20,6 +20,7 @@ size-check:
 
 node-check:
 	node --check katana/ast_bridge.mjs
+	node --check katana/ast_bridge_markdown.mjs
 	node --check katana/ast_bridge_modules.mjs
 
 check: lint format-check typecheck test size-check node-check
