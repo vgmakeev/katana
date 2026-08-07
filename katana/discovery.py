@@ -17,13 +17,11 @@ from .models import (
     source_split_extensions_for_profiles,
 )
 from .outline import outline_source_file, source_language, source_parser_capabilities
-from .planning import (
-    _build_source_split_plan,
-    _suggested_plan_payload,
-)
+from .planning import _build_source_split_plan
 from .planning import (
     source_safe_move_groups as source_safe_move_groups,  # noqa: PLC0414 (explicit re-export, checked by mypy)
 )
+from .planning_payload import _suggested_plan_payload
 from .source_io import read_source_text
 
 
