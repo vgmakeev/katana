@@ -5,6 +5,8 @@ then, compatibility promises are scoped explicitly below.
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-07
+
 ### Added
 
 - Native `.mjs` and `.cjs` discovery through the JavaScript adapter.
