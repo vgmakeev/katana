@@ -79,6 +79,7 @@ def test_toolchain_resolves_hoisted_workspace_binaries(
     root_bin.mkdir(parents=True)
     _write_fake_tool(root_bin / "eslint", log, json_when="--format json")
     _write_fake_tool(root_bin / "prettier", log)
+    _write_fake_tool(root_bin / "oxlint", log, json_when="--format json")
     (tmp_path / ".git").mkdir()
     package = tmp_path / "packages" / "admin"
     package.mkdir(parents=True)
@@ -93,7 +94,7 @@ def test_toolchain_resolves_hoisted_workspace_binaries(
 
     payload = run_toolchain_after_split(source, (SourceSplitMove(target, ("moved",)),))
 
-    assert payload["adapters"] == ["prettier", "eslint"]
+    assert payload["adapters"] == ["prettier", "eslint", "oxlint"]
     assert payload["skipped"] == []
     assert "prettier --write" in log.read_text()
 

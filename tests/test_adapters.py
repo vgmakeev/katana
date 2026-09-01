@@ -241,7 +241,7 @@ def test_adapter_cli_runs_ir_conformance(
     adapter_ids = {item["id"] for item in registry_payload["adapters"]}
     assert {"node_typescript", "dart_analyzer", "node_postcss"} <= adapter_ids
     toolchain_ids = {item["id"] for item in registry_payload["toolchains"]}
-    assert {"ruff", "prettier", "eslint", "dart-format", "tsc", "mypy"} <= toolchain_ids
+    assert {"ruff", "prettier", "eslint", "oxlint", "dart-format", "tsc", "mypy"} <= toolchain_ids
     assert registry_payload["toolchain_entry_point"] == "katana.toolchains"
 
 
