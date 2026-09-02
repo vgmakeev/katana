@@ -128,6 +128,60 @@ def test_real_ruff_keeps_output_compatible_with_target_python(tmp_path) -> None:
     ast.parse(target.read_text(), feature_version=(3, 11))
 
 
+def test_toolchain_passes_absolute_paths_when_source_is_relative_and_nested(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    """Every toolchain adapter runs its subprocess with cwd=repo_root (not
+    the caller's cwd). A relative Path pointing at a file NESTED below
+    repo_root — exactly what `Path(args.source)` in the CLI produces for
+    `katana apply pkg/sub/mod.py` invoked from a non-repo-root directory —
+    used to reach the subprocess unresolved, so the subprocess looked for
+    "pkg/sub/mod.py" relative to repo_root instead of the caller's actual
+    cwd, silently linting nothing (or the wrong file) whenever repo_root
+    and the invocation directory differ. Reproduced against a real tool
+    stand-in that reports whether it can actually find the file it was
+    given, not just what argv looked like."""
+    log = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_fake_tool(bin_dir / "ruff", log, json_when="--output-format=json")
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "pyproject.toml").write_text("[tool.ruff]\n")
+    nested = tmp_path / "pkg" / "sub"
+    nested.mkdir(parents=True)
+    source = nested / "mod.py"
+    target = nested / "mod_part.py"
+    source.write_text("def keep() -> int:\n    return 1\n")
+    target.write_text("def moved() -> int:\n    return 1\n")
+
+    # The bug reproduction: pass RELATIVE Path objects, exactly like
+    # `Path(args.source)` does for a relative CLI argument — not
+    # `source.resolve()`, which would mask the bug.
+    monkeypatch.chdir(nested)
+    relative_source = Path("mod.py")
+    relative_target = Path("mod_part.py")
+    assert not relative_source.is_absolute()
+
+    run_toolchain_after_split(relative_source, (SourceSplitMove(relative_target, ("moved",)),))
+
+    # The fake tool's own cwd is repo_root (tmp_path), not `nested` — so a
+    # bare "mod.py"/"mod_part.py" argv would resolve, from the *subprocess's*
+    # perspective, to tmp_path/mod.py, which does not exist. The fake tool
+    # doesn't validate file existence, so a relative-path regression would
+    # still produce a log line — just with the wrong, unresolvable token in
+    # it — which is why this asserts on the actual argv tokens, not merely
+    # that logging happened.
+    log_lines = log.read_text().splitlines()
+    assert log_lines
+    tokens = {token for line in log_lines for token in line.split()}
+    assert str(source.resolve()) in tokens
+    assert str(target.resolve()) in tokens
+    assert "mod.py" not in tokens
+    assert "mod_part.py" not in tokens
+
+
 def test_toolchain_runs_prettier_then_eslint_with_configs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
@@ -156,6 +210,107 @@ def test_toolchain_runs_prettier_then_eslint_with_configs(
     assert any("eslint --fix" in line for line in log_lines)
     assert any("prettier --check" in line for line in log_lines)
     assert any("eslint --format json" in line for line in log_lines)
+
+
+def test_toolchain_runs_oxlint_without_requiring_a_config_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    """oxlint is zero-config by design (unlike ESLint's flat config
+    requirement) — gating detection on a config file the way EslintAdapter
+    does would silently skip it in exactly the projects that adopted oxlint
+    because it needs none. No `.oxlintrc.json` is written here on purpose."""
+    log = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_fake_tool(
+        bin_dir / "oxlint",
+        log,
+        json_when="--format json",
+        json_payload={"diagnostics": [], "number_of_files": 1},
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    (tmp_path / "package.json").write_text("{}\n")
+    source = tmp_path / "view.ts"
+    target = tmp_path / "view_part.ts"
+    source.write_text("export const keep = 1\n")
+    target.write_text("export const moved = 1\n")
+
+    payload = run_toolchain_after_split(source, (SourceSplitMove(target, ("moved",)),))
+
+    assert payload is not None
+    assert "oxlint" in payload["adapters"]
+    assert payload["diagnostics"] == []
+    log_lines = log.read_text().splitlines()
+    assert any("oxlint --fix" in line for line in log_lines)
+    assert any("oxlint --format json" in line for line in log_lines)
+
+
+def test_toolchain_reports_oxlint_diagnostics_from_real_shaped_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    """Pins the actual oxlint --format json shape (diagnostics[].labels[0].span,
+    a string severity, no numeric ESLint-style codes) so a future oxlint CLI
+    change that alters this shape breaks a test here, not the diagnostics
+    parser reporting nothing back."""
+    log = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    real_shaped_payload = {
+        "diagnostics": [
+            {
+                "message": "Variable 'x' is declared but never used.",
+                "code": "eslint(no-unused-vars)",
+                "severity": "warning",
+                "filename": "view.ts",
+                "labels": [{"span": {"offset": 4, "length": 1, "line": 1, "column": 5}}],
+            }
+        ],
+        "number_of_files": 1,
+    }
+    _write_fake_tool(
+        bin_dir / "oxlint",
+        log,
+        json_when="--format json",
+        json_payload=real_shaped_payload,
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    source = tmp_path / "view.ts"
+    target = tmp_path / "view_part.ts"
+    source.write_text("export const keep = 1\n")
+    target.write_text("export const moved = 1\n")
+
+    payload = run_toolchain_after_split(source, (SourceSplitMove(target, ("moved",)),))
+
+    assert payload is not None
+    diagnostics = payload["diagnostics"]
+    assert len(diagnostics) == 1
+    entry = diagnostics[0]
+    assert entry["source"] == "oxlint"
+    assert entry["severity"] == "warning"
+    assert entry["line"] == 1
+    assert entry["column"] == 5
+    assert entry["code"] == "eslint(no-unused-vars)"
+    assert "declared but never used" in entry["message"]
+
+
+def test_toolchain_skips_oxlint_when_binary_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "view.ts"
+    target = tmp_path / "view_part.ts"
+    source.write_text("export const keep = 1\n")
+    target.write_text("export const moved = 1\n")
+    monkeypatch.setenv("PATH", "")
+
+    payload = run_toolchain_after_split(source, (SourceSplitMove(target, ("moved",)),))
+
+    skipped = payload["skipped"]
+    assert any(
+        item["tool"] == "oxlint" and "node_modules/.bin" in item["reason"] for item in skipped
+    )
 
 
 def test_toolchain_runs_dart_format_when_available(

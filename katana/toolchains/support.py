@@ -85,7 +85,21 @@ def run(command: list[str], *, cwd: Path | None = None) -> subprocess.CompletedP
 
 
 def file_args(files: list[Path]) -> list[str]:
-    return [str(path) for path in files]
+    """Stringify file paths for a toolchain subprocess argv.
+
+    Every toolchain adapter runs its subprocess with ``cwd=context.repo_root``
+    (see e.g. EslintAdapter/RuffAdapter.detect), not the caller's own working
+    directory. A relative Path here (exactly what a CLI invocation like
+    ``katana apply pkg/sub/mod.py`` from a non-repo-root directory produces,
+    since the split logic itself just resolves relative-to-cwd for file I/O
+    and never re-anchors the Path object) would then be resolved by the
+    *subprocess* against repo_root instead — silently linting/formatting the
+    wrong file, or nothing at all if repo_root has no file by that relative
+    name. Resolving to an absolute path here removes the ambiguity: it is
+    correct regardless of which directory the tool subprocess's cwd is set
+    to, or which directory katana itself was invoked from.
+    """
+    return [str(path.resolve()) for path in files]
 
 
 def diagnostics_from_process(

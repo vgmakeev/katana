@@ -51,13 +51,14 @@ def _ensure_loaded() -> None:
     if not _BUILTINS_LOADED:
         from .dart import DartFmtAdapter
         from .python import MypyAdapter, RuffAdapter
-        from .typescript import EslintAdapter, PrettierAdapter, TscAdapter
+        from .typescript import EslintAdapter, OxlintAdapter, PrettierAdapter, TscAdapter
 
         for adapter in (
             PrettierAdapter(),
             DartFmtAdapter(),
             RuffAdapter(),
             EslintAdapter(),
+            OxlintAdapter(),
             TscAdapter(),
             MypyAdapter(),
         ):
