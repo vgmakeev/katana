@@ -2,6 +2,8 @@
 
 from .toolchains import (
     AdapterKind,
+    CargoCheckAdapter,
+    CargoFmtAdapter,
     DartFmtAdapter,
     Diagnostic,
     EslintAdapter,
@@ -25,6 +27,8 @@ from .toolchains import (
 
 __all__ = (
     "AdapterKind",
+    "CargoCheckAdapter",
+    "CargoFmtAdapter",
     "DartFmtAdapter",
     "Diagnostic",
     "EslintAdapter",

@@ -7,6 +7,7 @@ from .css import CssAdapter
 from .dart import DartAdapter
 from .markdown import MarkdownAdapter
 from .python import PythonAdapter
+from .rust import RustAdapter
 from .typescript import TypeScriptAdapter
 
 _BuiltinAdapter = BundledLanguageAdapter
@@ -15,6 +16,7 @@ _BuiltinAdapter = BundledLanguageAdapter
 def builtin_language_adapters() -> tuple[BundledLanguageAdapter, ...]:
     return (
         PythonAdapter(),
+        RustAdapter(),
         TypeScriptAdapter(),
         DartAdapter(),
         CssAdapter(),
@@ -27,6 +29,7 @@ __all__ = (
     "DartAdapter",
     "MarkdownAdapter",
     "PythonAdapter",
+    "RustAdapter",
     "TypeScriptAdapter",
     "builtin_language_adapters",
 )

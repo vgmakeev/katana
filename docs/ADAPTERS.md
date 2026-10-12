@@ -13,6 +13,22 @@ ast-grep, LSP/SCIP indexes, and proprietary analyzers can all feed the same
 5. **Workspace rewrite** — update consumers across a project.
 6. **Verify** — format and run the language's compiler or analyzer.
 
+## Bundled Rust adapter
+
+The `tree-sitter-rust` adapter maps top-level items and individual inherent or
+trait `impl` methods with exact byte spans. Safe moves emit sibling `.rs`
+fragments and reconnect them with `include!`, preserving the original lexical
+module, visibility, item bytes and ordering. A move must be a contiguous range
+inside one module or one `impl` context. Katana runs `cargo fmt` and
+`cargo check --all-targets` after applying it.
+
+Use the explicit `rust` discovery profile to preserve the v1 meaning and order
+of the existing `core`, `admin` and `all` profiles:
+
+```bash
+katana large . --profile rust --json
+```
+
 Adapters must advertise each capability independently. Parser availability does
 not imply safe rewrite.
 
