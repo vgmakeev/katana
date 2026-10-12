@@ -6,10 +6,10 @@
 
 Deterministic, polyglot refactoring infrastructure for coding agents.
 
-[![CI](https://github.com/vgmakeev/kanata/actions/workflows/ci.yml/badge.svg)](https://github.com/vgmakeev/kanata/actions/workflows/ci.yml)
-[![Apache-2.0](https://img.shields.io/github/license/vgmakeev/kanata)](LICENSE)
+[![CI](https://github.com/vgmakeev/katana/actions/workflows/ci.yml/badge.svg)](https://github.com/vgmakeev/katana/actions/workflows/ci.yml)
+[![Apache-2.0](https://img.shields.io/github/license/vgmakeev/katana)](LICENSE)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Zero runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-2ea44f)](pyproject.toml)
+[![Tree-sitter Rust](https://img.shields.io/badge/Rust-tree--sitter-dea584?logo=rust)](pyproject.toml)
 
 </div>
 
@@ -48,27 +48,27 @@ Katana changes that boundary:
   project, such as Ruff, ESLint, Prettier, `tsc`, mypy, and `dart format`.
 - **Agent-native protocol:** commands are non-interactive, JSON is versioned,
   and every mutation has a dry-run.
-- **Tiny core:** Python 3.14, zero mandatory runtime dependencies.
+- **Small core:** Python 3.14 with focused Tree-sitter dependencies for safe Rust moves.
 
 ## Run with `uvx`
 
 No installation is required:
 
 ```bash
-uvx --from git+https://github.com/vgmakeev/kanata.git katana --help
+uvx --from git+https://github.com/vgmakeev/katana.git katana --help
 ```
 
 For a reproducible agent environment, pin a release tag or commit:
 
 ```bash
-uvx --from git+https://github.com/vgmakeev/kanata.git@<tag-or-commit> \
+uvx --from git+https://github.com/vgmakeev/katana.git@<tag-or-commit> \
   katana map src/big_module.py --json
 ```
 
 For a persistent installation:
 
 ```bash
-uv tool install git+https://github.com/vgmakeev/kanata.git
+uv tool install git+https://github.com/vgmakeev/katana.git
 katana --help
 ```
 
@@ -93,7 +93,7 @@ paths passed to it even when executed from `uvx`'s isolated environment.
 ### 1. Find files over the line budget
 
 ```bash
-uvx --from git+https://github.com/vgmakeev/kanata.git \
+uvx --from git+https://github.com/vgmakeev/katana.git \
   katana large . --max-lines 500 --json
 ```
 
@@ -107,7 +107,7 @@ The repository gate checks both language-aware code LOC and physical lines.
 ### 2. Map one file without exposing its body
 
 ```bash
-uvx --from git+https://github.com/vgmakeev/kanata.git \
+uvx --from git+https://github.com/vgmakeev/katana.git \
   katana map src/big_module.py --json
 ```
 
@@ -126,7 +126,7 @@ Source bodies are deliberately absent.
 ### 3. Produce and refine a plan
 
 ```bash
-uvx --from git+https://github.com/vgmakeev/kanata.git \
+uvx --from git+https://github.com/vgmakeev/katana.git \
   katana assess src/big_module.py \
   --max-lines 500 --write-plan --json
 ```
@@ -147,11 +147,11 @@ groups. The plan is intentionally simple and reviewable:
 ### 4. Dry-run, apply, and verify
 
 ```bash
-uvx --from git+https://github.com/vgmakeev/kanata.git \
+uvx --from git+https://github.com/vgmakeev/katana.git \
   katana apply src/big_module.py \
   --plan-file src/big_module.katana.json --check --json
 
-uvx --from git+https://github.com/vgmakeev/kanata.git \
+uvx --from git+https://github.com/vgmakeev/katana.git \
   katana apply src/big_module.py \
   --plan-file src/big_module.katana.json --typecheck --json
 ```
@@ -178,6 +178,7 @@ The complete automation contract is in
 | Stack | Architecture map | Rewrite posture | Detected project tools |
 | --- | --- | --- | --- |
 | Python | stdlib AST | safe top-level split | Ruff, optional mypy |
+| Rust | Tree-sitter items and individual `impl` methods | safe lexical-scope-preserving fragments | `cargo fmt`, `cargo check` |
 | TypeScript / JavaScript / TSX / JSX / ESM / CJS | TypeScript Compiler API or structural fallback | review + compiler validation | Prettier, ESLint, optional `tsc` |
 | Dart | analyzer package or structural fallback | review + analyzer/tests | `dart format` |
 | CSS | PostCSS or structural fallback | prefix/order constrained | Prettier |
@@ -260,8 +261,8 @@ validation.
 ## Development
 
 ```bash
-git clone https://github.com/vgmakeev/kanata.git
-cd kanata
+git clone https://github.com/vgmakeev/katana.git
+cd katana
 uv sync --all-groups
 make check
 make markdown-check

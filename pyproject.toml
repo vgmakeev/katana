@@ -6,7 +6,10 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "tree-sitter>=0.26.0",
+    "tree-sitter-rust>=0.24.2",
+]
 keywords = ["ai-agents", "ast", "refactoring", "developer-tools", "code-intelligence"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -21,8 +24,8 @@ classifiers = [
 katana = "katana.cli:main"
 
 [project.urls]
-Repository = "https://github.com/vgmakeev/kanata"
-Issues = "https://github.com/vgmakeev/kanata/issues"
+Repository = "https://github.com/vgmakeev/katana"
+Issues = "https://github.com/vgmakeev/katana/issues"
 
 [build-system]
 requires = ["setuptools>=77", "wheel"]

@@ -183,6 +183,36 @@ def test_toolchain_runs_dart_format_when_available(
     assert "dart format --output=none --set-exit-if-changed" in log_text
 
 
+def test_toolchain_runs_cargo_fmt_and_check_for_rust(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    log = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_fake_tool(bin_dir / "cargo", log, include_cwd=True)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    (tmp_path / "Cargo.toml").write_text(
+        '[package]\nname = "sample"\nversion = "0.0.0"\nedition = "2024"\n'
+    )
+    source = tmp_path / "src" / "lib.rs"
+    target = tmp_path / "src" / "part.rs"
+    source.parent.mkdir()
+    source.write_text("fn keep() {}\n")
+    target.write_text("fn moved() {}\n")
+
+    payload = run_toolchain_after_split(source, (SourceSplitMove(target, ("moved",)),))
+
+    assert payload["formatters"] == ["cargo-fmt"]
+    assert payload["checkers"] == ["cargo-check"]
+    assert payload["diagnostics"] == []
+    assert log.read_text().splitlines() == [
+        f"{tmp_path} :: cargo fmt --all",
+        f"{tmp_path} :: cargo fmt --all -- --check",
+        f"{tmp_path} :: cargo check --all-targets",
+    ]
+
+
 def test_toolchain_normalizes_ruff_diagnostics(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

@@ -5,6 +5,10 @@ then, compatibility promises are scoped explicitly below.
 
 ## Unreleased
 
+- Built-in Tree-sitter Rust maps and safe `include!`-fragment rewrites for
+  top-level items and individual `impl` methods.
+- Rust post-apply verification through `cargo fmt` and `cargo check`.
+
 ## 0.2.0 - 2026-08-07
 
 ### Added

@@ -51,15 +51,18 @@ def _ensure_loaded() -> None:
     if not _BUILTINS_LOADED:
         from .dart import DartFmtAdapter
         from .python import MypyAdapter, RuffAdapter
+        from .rust import CargoCheckAdapter, CargoFmtAdapter
         from .typescript import EslintAdapter, PrettierAdapter, TscAdapter
 
         for adapter in (
             PrettierAdapter(),
             DartFmtAdapter(),
+            CargoFmtAdapter(),
             RuffAdapter(),
             EslintAdapter(),
             TscAdapter(),
             MypyAdapter(),
+            CargoCheckAdapter(),
         ):
             register_toolchain_adapter(cast(ToolchainAdapter, adapter))
         _BUILTINS_LOADED = True

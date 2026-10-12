@@ -65,4 +65,6 @@ Third-party load failures are isolated and reported in
 - Keep compiler/test adapters check-only.
 
 Bundled reference implementations live under `katana.toolchains.python`,
-`katana.toolchains.typescript`, and `katana.toolchains.dart`.
+`katana.toolchains.typescript`, `katana.toolchains.dart`, and
+`katana.toolchains.rust`. Rust applies run `cargo fmt --all` followed by
+`cargo check --all-targets`; both are detected from the nearest `Cargo.toml`.

@@ -17,10 +17,13 @@ from .registry import (
     unregister_toolchain_adapter,
 )
 from .runtime import run_toolchain_after_split, skipped_toolchain_payload
+from .rust import CargoCheckAdapter, CargoFmtAdapter
 from .typescript import EslintAdapter, PrettierAdapter, TscAdapter
 
 __all__ = (
     "AdapterKind",
+    "CargoCheckAdapter",
+    "CargoFmtAdapter",
     "DartFmtAdapter",
     "Diagnostic",
     "EslintAdapter",
