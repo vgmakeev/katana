@@ -6,6 +6,6 @@
     "test:markdown-bridge": "node katana/ast_bridge.mjs markdown tests/fixtures/markdown.md"
   },
   "optionalDependencies": {
-    "@tanstack/markdown": "0.0.13"
+    "@tanstack/markdown": "1.0.0"
   }
 }
