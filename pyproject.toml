@@ -1,6 +1,6 @@
 [project]
 name = "katana-agent"
-version = "0.2.0"
+version = "0.3.0"
 description = "Deterministic polyglot refactoring executor for coding agents"
 readme = "README.md"
 license = "Apache-2.0"
